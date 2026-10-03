@@ -18,6 +18,9 @@ Then:
 
 The first ATM10Sky load can take several minutes. Click SKSE only once and wait.
 Do not separately launch CurseForge, Prism, or another Minecraft copy.
+Stay on Skyrim's main menu while the SkyCraft loading panel advances. Load your
+save only after it says "100% - Minecraft ready". The percentage represents real
+startup stages, so it may remain at one number for a while during the large mod load.
 
 HOST: The dedicated server is optional for solo play. If localhost is offline, SkyCraft
 tries it once and then opens your normal local mirror world. Start the server before

@@ -48,6 +48,8 @@ address when the installer asks for a server. No PowerShell knowledge is needed.
    instance, and creates an isolated Prism instance named `SkyCraft ATM10SKY`.
 4. Start Skyrim through SKSE. This patch launches the `SkyCraft ATM10SKY`
    profile automatically; there is no vanilla/modded prompt.
+5. Remain at Skyrim's main menu until the SkyCraft loading panel says
+   **100% - Minecraft ready**, then load a Skyrim save.
 
 ### Which address to enter
 
@@ -99,6 +101,13 @@ The first launch can take several minutes because ATM10Sky has hundreds of mods.
 Do not repeatedly click SKSE or start a second Prism/Minecraft copy while it is
 loading. If it never connects, close Skyrim and inspect Prism or the generated
 profile's `.minecraft\logs\latest.log` for an account or mod-loading error.
+
+Skyrim's main menu now shows a stage-based Minecraft loading percentage. It is
+not a fabricated per-mod counter: it advances when the launcher starts, the Java
+process appears, the SkyCraft shared-memory link connects, and the Minecraft
+world becomes active. Only that final world-ready signal produces 100%. The
+panel also reports Microsoft sign-in, missing-launcher, and launch-failure states
+instead of leaving the player guessing.
 
 ## Dedicated server (recommended)
 
@@ -224,7 +233,8 @@ the pack's quests rather than an overpowered handout.
   expected. SkyCraft then opens the host's local mirror world instead of retrying
   forever. Start the dedicated server before SKSE when shared progress is wanted.
 - **ATM10Sky seems frozen during first load:** give it several minutes and do
-  not launch another copy. Check Prism only if the client never connects.
+  not launch another copy. Stay on Skyrim's main menu until the loading panel
+  reaches 100%. Check Prism only if the client never connects.
 - **Minecraft appears briefly:** a short startup flash is possible. After the
   bridge initializes, its renderer is removed from the taskbar/normal Alt-Tab
   list and parked off-screen without GPU-throttling minimization.

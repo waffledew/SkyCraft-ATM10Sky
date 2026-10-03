@@ -50,6 +50,9 @@ normal SkyCraft 0.1.2, Minecraft Java Edition, and ATM10 To the Sky 2.0.6. Then:
 3. The host enters `localhost:25565`; friends enter the host's current
    `e4mc.link` address.
 4. Start Skyrim through SKSE. Do not separately start CurseForge or Prism.
+5. Stay on Skyrim's main menu while its SkyCraft panel advances through the
+   Minecraft startup stages. Load a save after it reaches **100% Minecraft
+   ready**.
 
 The host may play without starting the dedicated server. The client tries
 `localhost:25565` once and falls back to its own local SkyCraft mirror world when
@@ -60,6 +63,9 @@ For each multiplayer session, the host starts the prepared server once, waits
 for `Done`, and opens `SERVER-ADDRESS.txt`. Friends run
 `CHANGE-SERVER-ADDRESS.cmd` if that address changed, then everyone launches
 Skyrim through SKSE. The first ATM10Sky client load can take several minutes.
+The percentage is stage-based rather than a count of every mod: 100% is only
+shown after the bridge is connected and Minecraft reports that its world is
+loaded.
 
 ## Multiplayer and saves
 

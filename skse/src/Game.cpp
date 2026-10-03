@@ -4,6 +4,8 @@
 #include "Dig.h"
 #include "Perf.h"
 
+#include <format>
+
 namespace skycraft
 {
 	Runtime& State()
@@ -1137,6 +1139,120 @@ namespace skycraft
 
 	namespace Game
 	{
+		void UpdateMainMenuLoading()
+		{
+			// Process enumeration and Scaleform updates do not need to happen at Skyrim's frame rate.
+			static std::uint64_t nextUpdate = 0;
+			const auto           now = ::GetTickCount64();
+			if (now < nextUpdate) {
+				return;
+			}
+			nextUpdate = now + 500;
+
+			auto* ui = RE::UI::GetSingleton();
+			if (!ui || !ui->IsMenuOpen(RE::MainMenu::MENU_NAME)) {
+				return;
+			}
+			auto menu = ui->GetMenu<RE::MainMenu>();
+			if (!menu || !menu->uiMovie) {
+				return;
+			}
+
+			int         percent = 5;
+			const char* title = "Starting SkyCraft";
+			const char* detail = "Wait at the main menu before loading a save.";
+			const char* color = "#F3D56B";
+
+			proto::McState mcState{};
+			auto&          link = Link::Get();
+			const bool     linked = link.McAlive();
+			const bool     haveState = linked && link.ReadMcState(mcState);
+			if (haveState && (mcState.flags & proto::kMcInWorld) != 0) {
+				percent = 100;
+				title = "Minecraft ready";
+				detail = "SkyCraft is ready - it is safe to load your Skyrim save.";
+				color = "#8FE388";
+			} else if (linked) {
+				percent = 80;
+				title = "Loading the Minecraft world";
+				detail = "SkyCraft is linked. Keep waiting at the main menu.";
+			} else if (Launcher::MinecraftRunning()) {
+				percent = 55;
+				title = "Loading ATM10 To the Sky";
+				detail = "Minecraft is loading mods. Keep waiting at the main menu.";
+			} else {
+				const auto launcherStatus = Launcher::GetStatus();
+				if (launcherStatus == Launcher::Status::kSignIn) {
+					percent = 20;
+					title = "Microsoft sign-in needed";
+					detail = "Open Prism Launcher, sign in, then launch SkyCraft again.";
+					color = "#FF9E80";
+				} else if (launcherStatus == Launcher::Status::kNoLauncher) {
+					percent = 0;
+					title = "Minecraft launcher not found";
+					detail = "SkyCraft could not find its Prism Launcher installation.";
+					color = "#FF7A7A";
+				} else if (launcherStatus == Launcher::Status::kFailed) {
+					percent = 0;
+					title = "Minecraft failed to start";
+					detail = "Check Prism Launcher for an error before loading a save.";
+					color = "#FF7A7A";
+				} else if (Launcher::PrismRunning()) {
+					percent = 25;
+					title = "Prism Launcher is preparing Minecraft";
+					detail = "Downloads and first-time setup can take several minutes.";
+				} else if (launcherStatus == Launcher::Status::kRunning) {
+					percent = 35;
+					title = "Waiting for Minecraft";
+					detail = "Minecraft was already open; waiting for the SkyCraft mod.";
+				} else if (launcherStatus == Launcher::Status::kOff) {
+					percent = 0;
+					title = "Automatic Minecraft launch is disabled";
+					detail = "Start the SkyCraft Minecraft instance, then wait here.";
+				}
+			}
+
+			RE::GFxValue root;
+			if (!menu->uiMovie->GetVariable(&root, "_root") || !root.IsDisplayObject()) {
+				return;
+			}
+			RE::GFxValue field;
+			if (!root.GetMember("SkyCraftLoadingText", &field) || !field.IsDisplayObject()) {
+				const auto rect = menu->uiMovie->GetVisibleFrameRect();
+				const double viewWidth = static_cast<double>(rect.right - rect.left);
+				const double width = std::clamp(viewWidth * 0.62, 560.0, 820.0);
+				const double x = static_cast<double>(rect.left) + (viewWidth - width) * 0.5;
+				const double y = static_cast<double>(rect.bottom) - 122.0;
+				const std::array<RE::GFxValue, 6> args{
+					RE::GFxValue("SkyCraftLoadingText"), RE::GFxValue(10000.0),
+					RE::GFxValue(x), RE::GFxValue(y), RE::GFxValue(width), RE::GFxValue(92.0)
+				};
+				if (!root.Invoke("createTextField", args) ||
+					!root.GetMember("SkyCraftLoadingText", &field) || !field.IsDisplayObject()) {
+					return;
+				}
+				field.SetMember("selectable", RE::GFxValue(false));
+				field.SetMember("multiline", RE::GFxValue(true));
+				field.SetMember("wordWrap", RE::GFxValue(true));
+				field.SetMember("background", RE::GFxValue(true));
+				field.SetMember("backgroundColor", RE::GFxValue(0x080808));
+				field.SetMember("border", RE::GFxValue(true));
+				field.SetMember("borderColor", RE::GFxValue(0x777777));
+				field.SetMember("_alpha", RE::GFxValue(92.0));
+			}
+
+			constexpr int cells = 30;
+			const int     filled = std::clamp((percent * cells + 99) / 100, 0, cells);
+			std::string   bar(static_cast<std::size_t>(filled), '=');
+			bar.append(static_cast<std::size_t>(cells - filled), '.');
+			const auto html = std::format(
+				"<p align='center'><font face='$EverywhereFont' size='20' color='{}'><b>SKYCRAFT - {}% - {}</b></font><br>"
+				"<font face='$EverywhereFont' size='17' color='#FFFFFF'>[{}]</font><br>"
+				"<font face='$EverywhereFont' size='15' color='#DDDDDD'>{}</font></p>",
+				color, percent, title, bar, detail);
+			field.SetTextHTML(html.c_str());
+		}
+
 		// High-rate capture: every 20 s, record 120 consecutive frames of where things really are.
 		struct CaptureRow
 		{

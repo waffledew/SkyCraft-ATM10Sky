@@ -372,6 +372,7 @@ float4 PSMain(VSOut i) : SV_Target {
 			// Present runs even while the game is paused (menus, loading), unlike the player update,
 			// so this is where Skyrim tells Minecraft it is still alive.
 			Link::Get().Heartbeat();
+			Game::UpdateMainMenuLoading();
 			Game::CheckRenderedCamera();
 			try {
 				// Minecraft's world things (blocks, arrows, items) go under its hand and HUD.

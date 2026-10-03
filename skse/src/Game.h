@@ -49,6 +49,9 @@ namespace skycraft
 	{
 		void Install();
 		void OnGameLoaded();
+		// Present keeps running while Skyrim is at its main menu. Show an honest, stage-based
+		// Minecraft startup percentage there so the player knows when it is safe to load a save.
+		void UpdateMainMenuLoading();
 		// A Skyrim menu that takes the mouse or pauses the game is open (checked live: while it
 		// pauses the game, the per-frame update that normally tracks it doesn't run).
 		bool SkyrimMenuOpen();
