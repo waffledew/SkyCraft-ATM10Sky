@@ -16,8 +16,15 @@ Then:
 3. Paste the host's e4mc.link address when asked. The host enters localhost:25565.
 4. Start Skyrim through SKSE.
 
+When the host restarts the server, its e4mc.link address normally changes. Double-click
+CHANGE-SERVER-ADDRESS.cmd, paste the new address, and then start Skyrim through SKSE.
+
+HOST ONLY:
+After Prepare-Server.ps1 finishes, double-click START-SKYCRAFT-SERVER.cmd inside the
+prepared server folder. Wait for "Done" and "Domain assigned", then send friends the
+displayed e4mc.link address. Type stop in that server window before closing it.
+
 If Windows asks what should open the .cmd file, choose Windows Command Processor.
-The Install-Client.ps1 file is the underlying advanced installer; friends normally do not
-need to open it themselves.
+The .ps1 files are underlying advanced scripts; friends normally do not need to open them.
 
 For troubleshooting and server setup, read README.md.

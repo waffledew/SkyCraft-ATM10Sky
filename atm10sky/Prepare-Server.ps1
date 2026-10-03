@@ -34,18 +34,18 @@ if (-not (Test-Path -LiteralPath $contents) -or
 $mods = Join-Path $Destination 'mods'
 Copy-Item -LiteralPath $skycraftJar.FullName -Destination (Join-Path $mods $skycraftJar.Name) -Force
 Copy-Item -LiteralPath $e4mcJar.FullName -Destination (Join-Path $mods $e4mcJar.Name) -Force
+Copy-Item -LiteralPath (Join-Path $packageRoot 'START-SKYCRAFT-SERVER.cmd') -Destination $Destination -Force
 
 $propertiesFile = Join-Path $Destination 'server.properties'
-$properties = if (Test-Path -LiteralPath $propertiesFile) {
-    [System.Collections.Generic.List[string]](Get-Content -LiteralPath $propertiesFile)
+$properties = [System.Collections.Generic.List[string]]::new()
+if (Test-Path -LiteralPath $propertiesFile) {
+    foreach ($line in Get-Content -LiteralPath $propertiesFile) { $properties.Add($line) }
 } else {
-    [System.Collections.Generic.List[string]]@(
-        '# SkyCraft ATM10Sky dedicated server',
-        'allow-flight=true',
-        'max-tick-time=180000',
-        'motd=SkyCraft ATM10Sky',
-        'level-type=skycraft\:mirror'
-    )
+    $properties.Add('# SkyCraft ATM10Sky dedicated server')
+    $properties.Add('allow-flight=true')
+    $properties.Add('max-tick-time=180000')
+    $properties.Add('motd=SkyCraft ATM10Sky')
+    $properties.Add('level-type=skycraft\:mirror')
 }
 
 function Set-ServerProperty {
@@ -74,5 +74,5 @@ if ($jvm -notcontains '--enable-preview') { Add-Content -LiteralPath $jvmFile -V
 
 Write-Host "Prepared server: $Destination" -ForegroundColor Green
 Write-Host 'The shared server uses SkyCraft mirror world generation instead of a generated sky island.'
-Write-Host 'Run startserver.bat, read/accept the Minecraft EULA, and wait for the e4mc Domain assigned line.'
+Write-Host 'Double-click START-SKYCRAFT-SERVER.cmd, read/accept the Minecraft EULA, and wait for the e4mc Domain assigned line.'
 Write-Host 'The e4mc address changes each time the server restarts.'

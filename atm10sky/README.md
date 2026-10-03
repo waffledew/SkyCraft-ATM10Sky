@@ -44,6 +44,11 @@ address when the installer asks for a server. No PowerShell knowledge is needed.
 4. Start Skyrim through SKSE. This patch launches the `SkyCraft ATM10SKY`
    profile automatically; there is no vanilla/modded prompt.
 
+If the host restarts the server and receives a new e4mc address, close Skyrim,
+double-click `CHANGE-SERVER-ADDRESS.cmd`, paste the new address, and launch Skyrim
+again. The helper updates the generated Prism profile; no configuration file needs
+to be opened manually.
+
 The CurseForge download is the source copy of the official modpack. The
 installer copies it into SkyCraft's portable Prism Launcher, adds this project's
 NeoForge bridge, and writes the chosen server address. When SKSE starts Skyrim,
@@ -76,13 +81,15 @@ login and failures are not hidden from the player.
    powershell -ExecutionPolicy Bypass -File .\Prepare-Server.ps1 -ServerZip "C:\path\ATM10SKY-2.0.6-server.zip" -Destination "C:\ATM10Sky-Server"
    ```
 
-3. Run `startserver.bat` in the destination. On its first run, read and accept
-   the Minecraft EULA when prompted.
+3. Double-click `START-SKYCRAFT-SERVER.cmd` in the prepared destination. On its
+   first run, read and accept the Minecraft EULA when prompted. The server starts
+   when the host runs this file; it does not start automatically with Windows.
 4. Wait for `Done` and `Domain assigned: something.e4mc.link` in the server
    console. Send that e4mc address to friends.
 5. On the host PC, put `join=localhost:25565` in the ATM10Sky instance's
-   `.minecraft\config\skycraft.properties`. Friends put the e4mc address after
-   `join=`, or type `/join something.e4mc.link` once their hidden client opens.
+   `.minecraft\config\skycraft.properties`. The installer already does this when
+   the host enters `localhost:25565`. Friends can run
+   `CHANGE-SERVER-ADDRESS.cmd` whenever the e4mc address changes.
 
 The e4mc name changes whenever the server restarts. Port forwarding is not
 needed. The server and every client must use the same SkyCraft ATM10Sky jar.

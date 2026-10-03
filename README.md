@@ -17,7 +17,8 @@ has their own Skyrim world, NPCs, quests, and save file.
 
 Use the newest package on the
 [Releases page](https://github.com/waffledew/SkyCraft-ATM10Sky/releases).
-The ZIP contains a double-click friend installer, a short `START-HERE.txt`, the
+The ZIP contains a double-click friend installer, a double-click server-address
+changer, a friendly host server launcher, a short `START-HERE.txt`, the
 Vortex patch, server preparation script, licenses, and a detailed setup guide.
 
 It does not redistribute Skyrim, Minecraft, the complete ATM10Sky modpack, or
