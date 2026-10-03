@@ -23,6 +23,8 @@ $stage = Join-Path $OutputDirectory 'SkyCraft-ATM10Sky-2.0.6'
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Path (Join-Path $stage 'files') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'START-HERE.txt') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'INSTALL-ATM10SKY.cmd') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Install-Client.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Prepare-Server.ps1') -Destination $stage
 Copy-Item -LiteralPath $jar.FullName -Destination (Join-Path $stage 'files\skycraft-0.1.2-atm10sky.3.jar')

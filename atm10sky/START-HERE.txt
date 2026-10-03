@@ -1,0 +1,23 @@
+SKYCRAFT ATM10SKY - FRIEND SETUP
+================================
+
+Minecraft stays hidden during normal gameplay. Skyrim is the game window you use.
+Prism may appear only for the first Microsoft sign-in or when an error needs attention.
+
+Before installing:
+1. Own Skyrim SE/AE and Minecraft Java Edition.
+2. Install SKSE64 and Address Library for your Skyrim version.
+3. Install normal SkyCraft with Vortex and launch it once to finish Microsoft sign-in.
+4. Install ATM10 To the Sky 2.0.6 in CurseForge.
+
+Then:
+1. Add SkyCraft-ATM10Sky-Vortex-Patch.zip to Vortex and let it overwrite SkyCraft.
+2. Double-click INSTALL-ATM10SKY.cmd in this folder.
+3. Paste the host's e4mc.link address when asked. The host enters localhost:25565.
+4. Start Skyrim through SKSE.
+
+If Windows asks what should open the .cmd file, choose Windows Command Processor.
+The Install-Client.ps1 file is the underlying advanced installer; friends normally do not
+need to open it themselves.
+
+For troubleshooting and server setup, read README.md.

@@ -147,3 +147,4 @@ Set-Content -LiteralPath (Join-Path $instanceRoot 'mmc-pack.json') -Value @'
 
 Write-Host "Installed Prism profile: $instanceRoot" -ForegroundColor Green
 Write-Host 'Install the supplied Vortex patch after normal SkyCraft. Skyrim will launch the ATM10Sky profile automatically.'
+Write-Host 'Minecraft and its console stay hidden during normal play; Prism appears only for sign-in or an error.'

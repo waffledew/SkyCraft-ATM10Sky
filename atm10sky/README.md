@@ -31,16 +31,16 @@ accounts.
 
 ## Client setup
 
-For a friend, the short version is: install the prerequisites above, install
-the supplied Vortex patch, run `Install-Client.ps1`, then enter the host's
-e4mc address when the installer asks for a server.
+For a friend, the short version is: open `START-HERE.txt`, install the supplied
+Vortex patch, double-click `INSTALL-ATM10SKY.cmd`, then enter the host's e4mc
+address when the installer asks for a server. No PowerShell knowledge is needed.
 
 1. Install `SkyCraft-ATM10Sky-Vortex-Patch.zip` with Vortex after normal
    SkyCraft and let the patch win its two file conflicts.
 2. Extract this compatibility package to any folder.
-3. Right-click `Install-Client.ps1`, choose **Run with PowerShell**, and follow
-   its prompts. The script finds the 2.0.6 CurseForge instance and creates an
-   isolated Prism instance named `SkyCraft ATM10SKY`.
+3. Double-click `INSTALL-ATM10SKY.cmd` and follow its prompts. It runs the
+   included PowerShell installer for the user, finds the 2.0.6 CurseForge
+   instance, and creates an isolated Prism instance named `SkyCraft ATM10SKY`.
 4. Start Skyrim through SKSE. This patch launches the `SkyCraft ATM10SKY`
    profile automatically; there is no vanilla/modded prompt.
 
@@ -61,6 +61,11 @@ The installer keeps SkyblockBuilder and SkyGUIs enabled. It disables Iris and
 Sodium because they replace rendering paths SkyCraft exports into Skyrim.
 Flywheel is set to its compatible `off` backend; Create still works, but its
 animated contraptions are rendered by Minecraft's fallback renderer.
+
+Minecraft's game window and Prism console stay hidden during normal play, so
+friends interact only with Skyrim. Prism can appear for the initial Microsoft
+sign-in or when a launch error needs attention; this is intentional so account
+login and failures are not hidden from the player.
 
 ## Dedicated server (recommended)
 

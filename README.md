@@ -17,8 +17,8 @@ has their own Skyrim world, NPCs, quests, and save file.
 
 Use the newest package on the
 [Releases page](https://github.com/waffledew/SkyCraft-ATM10Sky/releases).
-The ZIP contains a friend installer, Vortex patch, server preparation script,
-licenses, and a detailed setup guide.
+The ZIP contains a double-click friend installer, a short `START-HERE.txt`, the
+Vortex patch, server preparation script, licenses, and a detailed setup guide.
 
 It does not redistribute Skyrim, Minecraft, the complete ATM10Sky modpack, or
 account credentials. Every player must obtain those from their official sources.
@@ -31,7 +31,7 @@ account credentials. Every player must obtain those from their official sources.
 3. The installer adds this project's NeoForge bridge and compatibility settings.
 4. The Vortex patch installs the SKSE DLL and configures it to launch the
    `SkyCraft ATM10SKY` profile automatically.
-5. Minecraft runs hidden. The NeoForge mod and SKSE DLL exchange the Minecraft
+5. Minecraft and its console run hidden. The NeoForge mod and SKSE DLL exchange the Minecraft
    world state with Skyrim while both games keep running their own logic.
 
 The installer uses Windows environment paths, supports a custom CurseForge
