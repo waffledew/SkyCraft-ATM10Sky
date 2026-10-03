@@ -116,4 +116,4 @@ Set-Content -LiteralPath (Join-Path $instanceRoot 'mmc-pack.json') -Value @'
 '@
 
 Write-Host "Installed Prism profile: $instanceRoot" -ForegroundColor Green
-Write-Host 'Install the supplied Vortex patch after normal SkyCraft, then choose ATM10 To the Sky when Skyrim starts.'
+Write-Host 'Install the supplied Vortex patch after normal SkyCraft. Skyrim will launch the ATM10Sky profile automatically.'

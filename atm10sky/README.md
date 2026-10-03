@@ -29,8 +29,8 @@ e4mc address when the installer asks for a server.
 3. Right-click `Install-Client.ps1`, choose **Run with PowerShell**, and follow
    its prompts. The script finds the 2.0.6 CurseForge instance and creates an
    isolated Prism instance named `SkyCraft ATM10SKY`.
-4. Start Skyrim through SKSE and choose **No: ATM10 To the Sky** in SkyCraft's
-   profile prompt.
+4. Start Skyrim through SKSE. This patch launches the `SkyCraft ATM10SKY`
+   profile automatically; there is no vanilla/modded prompt.
 
 The installer keeps SkyblockBuilder and SkyGUIs enabled. It disables Iris and
 Sodium because they replace rendering paths SkyCraft exports into Skyrim.
