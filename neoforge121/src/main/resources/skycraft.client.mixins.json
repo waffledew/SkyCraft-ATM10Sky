@@ -1,0 +1,28 @@
+{
+  "required": true,
+  "package": "dev.skycraft.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ChatComponentMixin",
+    "ClientLevelAccessor",
+    "ClientLevelDigMixin",
+    "EntityCollideMixin",
+    "FramerateLimitTrackerMixin",
+    "GuiMixin",
+    "InputConstantsMixin",
+    "KeyboardHandlerAccessor",
+    "LevelExtractorMixin",
+    "LevelRendererMixin",
+    "MinecraftDigMixin",
+    "MinecraftMixin",
+    "MouseHandlerAccessor",
+    "ParticleEngineAccessor",
+    "ScreenMixin",
+    "SpriteContentsAccessor",
+    "TextureAtlasAccessor",
+    "TextureManagerAccessor",
+    "WindowMixin",
+    "WorldOpenFlowsMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}

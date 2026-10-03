@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "package": "dev.skycraft.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "AbstractArrowMixin",
+    "BlockCollisionsMixin",
+    "BlockStateBaseMixin",
+    "EntityFluidInteractionMixin",
+    "EntityPickMixin",
+    "FallingBlockMixin",
+    "FlowingFluidMixin",
+    "ItemMixin",
+    "PlayerEdgeMixin",
+    "PressurePlateMixin",
+    "ProjectileMixin",
+    "ProjectileUtilMixin",
+    "ServerExplosionMixin",
+    "ServerPlayerMixin",
+    "SmithingMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}

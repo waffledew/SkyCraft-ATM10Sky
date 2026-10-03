@@ -3,6 +3,9 @@ fabric/.gradle/
 fabric/build/
 fabric/run/
 fabric/out/
+neoforge121/.gradle/
+neoforge121/build/
+neoforge121/run/
 # cmake / vcpkg
 skse/build/
 skse/vcpkg_installed/
@@ -18,3 +21,4 @@ CMakeUserPresets.json
 fabric/run-guest*/
 __pycache__/
 *.pyc
+client-extra-inspect.jar

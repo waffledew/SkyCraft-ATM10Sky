@@ -997,6 +997,42 @@ float4 OverlayPS(float4 pos : SV_Position) : SV_Target
 			atlasMipsStale = true;
 		}
 
+		bool AllocateAtlas(std::uint32_t a_width, std::uint32_t a_height)
+		{
+			if (!a_width || !a_height) {
+				return false;
+			}
+			Release(atlasSrv);
+			Release(atlasTex);
+			D3D11_TEXTURE2D_DESC td{};
+			td.Width = a_width;
+			td.Height = a_height;
+			td.MipLevels = 5;  // 16px sprites stay inside their own cell down to 1px
+			td.ArraySize = 1;
+			td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			td.SampleDesc.Count = 1;
+			td.Usage = D3D11_USAGE_DEFAULT;
+			td.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+			td.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+			if (FAILED(device->CreateTexture2D(&td, nullptr, &atlasTex)) || FAILED(device->CreateShaderResourceView(atlasTex, nullptr, &atlasSrv))) {
+				logger::error("atlas texture {}x{} failed", a_width, a_height);
+				Release(atlasTex);
+				return false;
+			}
+			return true;
+		}
+
+		void OnAtlasAllocate(const std::uint8_t* a_data, std::uint32_t a_bytes)
+		{
+			if (a_bytes < sizeof(proto::RenAtlas)) {
+				return;
+			}
+			const auto* hdr = reinterpret_cast<const proto::RenAtlas*>(a_data);
+			if (AllocateAtlas(hdr->width, hdr->height)) {
+				logger::info("allocated Minecraft texture atlas {}x{} for streamed upload", hdr->width, hdr->height);
+			}
+		}
+
 		void OnAtlas(ID3D11DeviceContext* a_context, const std::uint8_t* a_data, std::uint32_t a_bytes)
 		{
 			if (a_bytes < sizeof(proto::RenAtlas)) {
@@ -1006,21 +1042,7 @@ float4 OverlayPS(float4 pos : SV_Position) : SV_Target
 			if (a_bytes < sizeof(proto::RenAtlas) + std::uint64_t(hdr->width) * hdr->height * 4 || !hdr->width || !hdr->height) {
 				return;
 			}
-			Release(atlasSrv);
-			Release(atlasTex);
-			D3D11_TEXTURE2D_DESC td{};
-			td.Width = hdr->width;
-			td.Height = hdr->height;
-			td.MipLevels = 5;  // 16px sprites stay inside their own cell down to 1px
-			td.ArraySize = 1;
-			td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			td.SampleDesc.Count = 1;
-			td.Usage = D3D11_USAGE_DEFAULT;
-			td.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
-			td.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
-			if (FAILED(device->CreateTexture2D(&td, nullptr, &atlasTex)) || FAILED(device->CreateShaderResourceView(atlasTex, nullptr, &atlasSrv))) {
-				logger::error("atlas texture {}x{} failed", hdr->width, hdr->height);
-				Release(atlasTex);
+			if (!AllocateAtlas(hdr->width, hdr->height)) {
 				return;
 			}
 			a_context->UpdateSubresource(atlasTex, 0, nullptr, a_data + sizeof(proto::RenAtlas), hdr->width * 4, 0);
@@ -1114,6 +1136,9 @@ float4 OverlayPS(float4 pos : SV_Position) : SV_Target
 						break;
 					case proto::kRenAtlasRegion:
 						OnAtlasRegion(a_context, a_data, a_bytes);
+						break;
+					case proto::kRenAtlasAllocate:
+						OnAtlasAllocate(a_data, a_bytes);
 						break;
 					default:
 						break;

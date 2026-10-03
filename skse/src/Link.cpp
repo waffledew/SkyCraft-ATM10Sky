@@ -12,7 +12,10 @@ namespace skycraft
 			return std::atomic_ref<T>(a_value);
 		}
 
-		constexpr std::uint64_t kMcTimeoutMs = 3000;
+		// Large Minecraft modpacks can stop their render thread for tens of seconds while JEI,
+		// resource packs, chunks, or custom renderers rebuild.  The heartbeat is written by that
+		// thread, so a short timeout falsely clears and reconnects an otherwise healthy game.
+		constexpr std::uint64_t kMcTimeoutMs = 45000;
 
 		bool Elevated()
 		{

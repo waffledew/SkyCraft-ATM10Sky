@@ -284,8 +284,23 @@ namespace skycraft::Launcher
 			return;
 		}
 		const std::filesystem::path chosen = ExpandEnv(Widen(ini.GetValue("Minecraft", "sLauncher", "")));
-		const std::wstring          args = Widen(ini.GetValue("Minecraft", "sArguments", "--launch SkyCraft"));
-		const std::string           argsShown = ini.GetValue("Minecraft", "sArguments", "--launch SkyCraft");
+		std::string                 argsShown = ini.GetValue("Minecraft", "sArguments", "--launch SkyCraft");
+		if (ini.GetBoolValue("Minecraft", "bChooseProfile", false)) {
+			const int answer = ::MessageBoxW(nullptr,
+				L"Choose the Minecraft profile for this Skyrim session.\n\n"
+				L"Yes: Vanilla SkyCraft\nNo: ATM10 To the Sky\nCancel: start Skyrim without Minecraft",
+				L"SkyCraft profile", MB_ICONQUESTION | MB_YESNOCANCEL | MB_SETFOREGROUND);
+			if (answer == IDCANCEL) {
+				logger::info("Minecraft: profile selection cancelled");
+				status = Status::kOff;
+				return;
+			}
+			argsShown = answer == IDYES
+				? ini.GetValue("Minecraft", "sVanillaArguments", "--launch SkyCraft")
+				: ini.GetValue("Minecraft", "sModdedArguments", "--launch \"SkyCraft ATM10SKY\"");
+			logger::info("Minecraft: selected {} profile", answer == IDYES ? "vanilla" : "ATM10SKY");
+		}
+		const std::wstring args = Widen(argsShown);
 		const bool                  bundled = chosen.empty() && std::filesystem::exists(kBundle);
 		const std::filesystem::path installed = chosen.empty() && !bundled ? FindPrism() : std::filesystem::path{};
 		if (chosen.empty() && !bundled && installed.empty()) {
