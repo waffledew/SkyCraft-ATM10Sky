@@ -1,9 +1,11 @@
 # SkyCraft + ATM10 To the Sky 2.0.6
 
-This compatibility package runs **All the Mods 10: To the Sky 2.0.6** as
-SkyCraft's hidden Minecraft simulation. It supports a shared dedicated Minecraft
-world while every player keeps their own Skyrim installation, save, NPCs, and
-quests.
+This project is an unofficial compatibility port inspired by and based on
+[chasmlol/SkyCraft](https://github.com/chasmlol/SkyCraft). Its goal is a modded
+Minecraft-in-Skyrim experience using **All the Mods 10: To the Sky 2.0.6**. It
+supports a shared dedicated Minecraft world while every player keeps their own
+Skyrim installation, save, NPCs, and quests. It is not affiliated with the ATM
+team or the original SkyCraft author.
 
 ## What every player needs
 
@@ -16,6 +18,16 @@ quests.
 
 Do not share Minecraft accounts, Skyrim game files, or the complete ATM modpack.
 Each player installs those from their official sources.
+
+### Why this is a small installer instead of one giant bundle
+
+An everything-included archive would redistribute Skyrim/SKSE and hundreds of
+CurseForge mods whose licenses and download rules differ, and it still could not
+include another person's Microsoft/Minecraft login. This release is therefore a
+thin installer: friends obtain the official prerequisites once, then this script
+assembles and configures them automatically. That is the closest practical,
+shareable one-package setup without republishing other creators' files or
+accounts.
 
 ## Client setup
 
@@ -31,6 +43,19 @@ e4mc address when the installer asks for a server.
    isolated Prism instance named `SkyCraft ATM10SKY`.
 4. Start Skyrim through SKSE. This patch launches the `SkyCraft ATM10SKY`
    profile automatically; there is no vanilla/modded prompt.
+
+The CurseForge download is the source copy of the official modpack. The
+installer copies it into SkyCraft's portable Prism Launcher, adds this project's
+NeoForge bridge, and writes the chosen server address. When SKSE starts Skyrim,
+the SkyCraft DLL starts that Prism profile invisibly. The NeoForge mod then sends
+Minecraft blocks, entities, inventory, lighting, and actions to the DLL for
+Skyrim to display and interact with.
+
+The installer uses Windows environment folders instead of a creator-specific
+username, checks several common CurseForge locations, asks for a custom folder
+when needed, and chooses a Minecraft memory limit from the PC's installed RAM.
+Skyrim SE/AE and Vortex make this a Windows package; it is intended to tolerate
+different Windows usernames, drives, and CurseForge library locations.
 
 The installer keeps SkyblockBuilder and SkyGUIs enabled. It disables Iris and
 Sodium because they replace rendering paths SkyCraft exports into Skyrim.
@@ -57,6 +82,12 @@ animated contraptions are rendered by Minecraft's fallback renderer.
 The e4mc name changes whenever the server restarts. Port forwarding is not
 needed. The server and every client must use the same SkyCraft ATM10Sky jar.
 
+The dedicated server saves the world, player inventories, FTB teams/quests, and
+mod data in its server folder using Minecraft's normal autosave. Always type
+`stop` in the server console before closing it. Back up the whole server folder
+(especially `world`, `config`, `defaultconfigs`, and the player/FTB data) before
+updates or experiments.
+
 `Prepare-Server.ps1` selects `skycraft:mirror` as the server's empty shared
 world, so it does not generate a separate starting sky island. SkyblockBuilder
 and SkyGUIs must remain installed on both server and clients because NeoForge
@@ -71,6 +102,14 @@ control the shared server world.
 - Skyrim NPCs, quests, locations, and save files stay local to each player.
 - A friend joining the Minecraft server does not join the host's Skyrim quest
   instance.
+
+## New-player progression
+
+Each player receives one modest first-join kit: iron armor, an iron sword,
+pickaxe, axe and shovel, 16 cooked beef, and 16 torches. There are no diamond
+tools, golden apples, or free building stacks. ATM10Sky's FTB quest interface
+and mod guidebooks remain available normally, so progression still starts from
+the pack's quests rather than an overpowered handout.
 
 ## Troubleshooting
 

@@ -22,7 +22,8 @@ public final class SkyCraft {
 	public static final String MOD_ID = "skycraft";
 	public static final String WORLD_NAME = "SkyCraft";
 	public static final Logger LOG = LoggerFactory.getLogger(MOD_ID);
-	private static final String KIT2_TAG = "skycraft_builder_kit";
+	// Keep the old tag value so players who already received a kit are not given another one.
+	private static final String STARTER_KIT_TAG = "skycraft_builder_kit";
 
 	public SkyCraft(IEventBus modBus) {
 		SkyCombat.init(modBus);
@@ -41,7 +42,6 @@ public final class SkyCraft {
 	private static void playerJoined(PlayerEvent.PlayerLoggedInEvent event) {
 		if (event.getEntity() instanceof ServerPlayer player) {
 			giveStarterKit(player);
-			giveBuilderKit(player);
 			dressTestGuest(player);
 		}
 	}
@@ -87,26 +87,7 @@ public final class SkyCraft {
 	}
 
 	private static void giveStarterKit(ServerPlayer player) {
-		if (!player.getInventory().isEmpty()) {
-			return;
-		}
-		player.getInventory().add(new ItemStack(Items.DIAMOND_SWORD));
-		player.getInventory().add(new ItemStack(Items.DIAMOND_PICKAXE));
-		player.getInventory().add(new ItemStack(Items.BOW));
-		player.getInventory().add(new ItemStack(Items.COOKED_BEEF, 32));
-		player.getInventory().add(new ItemStack(Items.OAK_PLANKS, 64));
-		player.getInventory().add(new ItemStack(Items.TORCH, 32));
-		player.getInventory().add(new ItemStack(Items.ARROW, 64));
-		player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
-		LOG.info("SkyCraft: gave starter kit to {}", player.getName().getString());
-	}
-
-	/**
-	 * Once per player: armor (Skyrim's enemies hit back now) and building materials, since there is
-	 * no Minecraft terrain to mine in Skyrim.
-	 */
-	private static void giveBuilderKit(ServerPlayer player) {
-		if (player.getTags().contains(KIT2_TAG)) {
+		if (player.getTags().contains(STARTER_KIT_TAG)) {
 			return;
 		}
 		equipIfEmpty(player, EquipmentSlot.HEAD, Items.IRON_HELMET);
@@ -114,21 +95,14 @@ public final class SkyCraft {
 		equipIfEmpty(player, EquipmentSlot.LEGS, Items.IRON_LEGGINGS);
 		equipIfEmpty(player, EquipmentSlot.FEET, Items.IRON_BOOTS);
 		var inventory = player.getInventory();
-		inventory.add(new ItemStack(Items.COBBLESTONE, 64));
-		inventory.add(new ItemStack(Items.STONE_BRICKS, 64));
-		inventory.add(new ItemStack(Items.OAK_LOG, 64));
-		inventory.add(new ItemStack(Items.GLASS, 64));
-		inventory.add(new ItemStack(Items.OAK_STAIRS, 64));
-		inventory.add(new ItemStack(Items.OAK_SLAB, 64));
-		inventory.add(new ItemStack(Items.OAK_DOOR, 8));
-		inventory.add(new ItemStack(Items.LADDER, 32));
-		inventory.add(new ItemStack(Items.LANTERN, 16));
-		inventory.add(new ItemStack(Items.CRAFTING_TABLE));
-		inventory.add(new ItemStack(Items.WATER_BUCKET));
-		inventory.add(new ItemStack(Items.ARROW, 64));
-		inventory.add(new ItemStack(Items.GOLDEN_APPLE, 4));
-		player.addTag(KIT2_TAG);
-		LOG.info("SkyCraft: gave builder kit to {}", player.getName().getString());
+		inventory.add(new ItemStack(Items.IRON_SWORD));
+		inventory.add(new ItemStack(Items.IRON_PICKAXE));
+		inventory.add(new ItemStack(Items.IRON_AXE));
+		inventory.add(new ItemStack(Items.IRON_SHOVEL));
+		inventory.add(new ItemStack(Items.COOKED_BEEF, 16));
+		inventory.add(new ItemStack(Items.TORCH, 16));
+		player.addTag(STARTER_KIT_TAG);
+		LOG.info("SkyCraft: gave progression starter kit to {}", player.getName().getString());
 	}
 
 	private static void equipIfEmpty(ServerPlayer player, EquipmentSlot slot, net.minecraft.world.item.Item item) {

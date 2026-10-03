@@ -25,7 +25,7 @@ New-Item -ItemType Directory -Path (Join-Path $stage 'files') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Install-Client.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Prepare-Server.ps1') -Destination $stage
-Copy-Item -LiteralPath $jar.FullName -Destination (Join-Path $stage 'files\skycraft-0.1.2-atm10sky.2.jar')
+Copy-Item -LiteralPath $jar.FullName -Destination (Join-Path $stage 'files\skycraft-0.1.2-atm10sky.3.jar')
 Copy-Item -LiteralPath $E4mcJar -Destination (Join-Path $stage 'files\e4mc-neoforge-6.1.1.jar')
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination (Join-Path $stage 'LICENSE-SkyCraft.txt')
 Copy-Item -LiteralPath (Join-Path $root 'THIRD-PARTY-NOTICES.md') -Destination $stage

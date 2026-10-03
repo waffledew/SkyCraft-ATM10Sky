@@ -2,6 +2,7 @@
 param(
     [string]$CurseForgeInstance,
     [string]$PrismRoot = (Join-Path $env:LOCALAPPDATA 'SkyCraft\Prism'),
+    [string]$ServerAddress,
     [switch]$Force
 )
 
@@ -15,17 +16,27 @@ if (-not $skycraftJar -or -not $e4mcJar) {
 }
 
 if (-not $CurseForgeInstance) {
-    $instances = Join-Path $env:USERPROFILE 'curseforge\minecraft\Instances'
-    $CurseForgeInstance = Get-ChildItem -LiteralPath $instances -Directory -ErrorAction SilentlyContinue |
-        Where-Object {
-            $manifestPath = Join-Path $_.FullName 'manifest.json'
-            if (-not (Test-Path -LiteralPath $manifestPath)) { return $false }
-            try {
-                $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-                return $manifest.name -eq 'ATM10SKY' -and $manifest.version -eq '2.0.6' -and
-                    $manifest.minecraft.version -eq '1.21.1'
-            } catch { return $false }
-        } | Select-Object -First 1 -ExpandProperty FullName
+    $instanceFolders = @(
+        (Join-Path $env:USERPROFILE 'curseforge\minecraft\Instances'),
+        (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'CurseForge\Minecraft\Instances'),
+        (Join-Path $env:APPDATA 'CurseForge\minecraft\Instances')
+    ) | Select-Object -Unique
+    foreach ($instances in $instanceFolders) {
+        $CurseForgeInstance = Get-ChildItem -LiteralPath $instances -Directory -ErrorAction SilentlyContinue |
+            Where-Object {
+                $manifestPath = Join-Path $_.FullName 'manifest.json'
+                if (-not (Test-Path -LiteralPath $manifestPath)) { return $false }
+                try {
+                    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+                    return $manifest.name -eq 'ATM10SKY' -and $manifest.version -eq '2.0.6' -and
+                        $manifest.minecraft.version -eq '1.21.1'
+                } catch { return $false }
+            } | Select-Object -First 1 -ExpandProperty FullName
+        if ($CurseForgeInstance) { break }
+    }
+}
+if (-not $CurseForgeInstance) {
+    $CurseForgeInstance = Read-Host 'ATM10Sky was not found automatically. Paste its CurseForge instance folder path'
 }
 if (-not $CurseForgeInstance -or -not (Test-Path -LiteralPath $CurseForgeInstance)) {
     throw 'ATM10 To the Sky 2.0.6 was not found. Install it with CurseForge or pass -CurseForgeInstance.'
@@ -78,13 +89,32 @@ Copy-Item -LiteralPath $e4mcJar.FullName -Destination (Join-Path $mods $e4mcJar.
 $config = Join-Path $minecraft 'config'
 New-Item -ItemType Directory -Path $config -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $config 'flywheel-client.toml') -Value 'backend = "flywheel:off"'
+if (-not $PSBoundParameters.ContainsKey('ServerAddress')) {
+    $ServerAddress = Read-Host 'Server address (host: localhost:25565; friends: the e4mc.link address; leave blank to set later)'
+}
+$ServerAddress = $ServerAddress.Trim()
+if ($ServerAddress -match '[\r\n=]') { throw 'The server address contains invalid characters.' }
 Set-Content -LiteralPath (Join-Path $config 'skycraft.properties') -Value @(
     '# SkyCraft: leave empty for your own world; use localhost:25565 for a server on this PC,'
     '# or use the host''s something.e4mc.link address.',
-    'join='
+    "join=$ServerAddress"
 )
 
-Set-Content -LiteralPath (Join-Path $instanceRoot 'instance.cfg') -Value @'
+$maxMemory = 8192
+try {
+    $physicalMemoryMb = [math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1MB)
+    if ($physicalMemoryMb -ge 24576) { $maxMemory = 10240 }
+    elseif ($physicalMemoryMb -ge 16384) { $maxMemory = 8192 }
+    elseif ($physicalMemoryMb -ge 12288) { $maxMemory = 6144 }
+    else {
+        $maxMemory = 4096
+        Write-Warning 'ATM10Sky normally needs at least 12-16 GB of system RAM. This PC may struggle.'
+    }
+} catch {
+    Write-Warning 'Could not detect system RAM; using an 8 GB Minecraft limit.'
+}
+
+Set-Content -LiteralPath (Join-Path $instanceRoot 'instance.cfg') -Value @"
 [General]
 InstanceType=OneSix
 name=SkyCraft ATM10SKY
@@ -94,7 +124,7 @@ OverrideJavaArgs=true
 JvmArgs="--enable-preview --enable-native-access=ALL-UNNAMED -Dskycraft.startHidden=true -Dskycraft.quitWithSkyrim=true"
 OverrideMemory=true
 MinMemAlloc=1024
-MaxMemAlloc=8500
+MaxMemAlloc=$maxMemory
 OverrideConsole=true
 ShowConsole=false
 AutoCloseConsole=false
@@ -102,7 +132,7 @@ ShowConsoleOnError=true
 AutomaticJava=true
 OverrideJavaLocation=false
 ConfigVersion=1.3
-'@
+"@
 
 Set-Content -LiteralPath (Join-Path $instanceRoot 'mmc-pack.json') -Value @'
 {
