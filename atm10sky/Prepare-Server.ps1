@@ -35,6 +35,37 @@ $mods = Join-Path $Destination 'mods'
 Copy-Item -LiteralPath $skycraftJar.FullName -Destination (Join-Path $mods $skycraftJar.Name) -Force
 Copy-Item -LiteralPath $e4mcJar.FullName -Destination (Join-Path $mods $e4mcJar.Name) -Force
 
+$propertiesFile = Join-Path $Destination 'server.properties'
+$properties = if (Test-Path -LiteralPath $propertiesFile) {
+    [System.Collections.Generic.List[string]](Get-Content -LiteralPath $propertiesFile)
+} else {
+    [System.Collections.Generic.List[string]]@(
+        '# SkyCraft ATM10Sky dedicated server',
+        'allow-flight=true',
+        'max-tick-time=180000',
+        'motd=SkyCraft ATM10Sky',
+        'level-type=skycraft\:mirror'
+    )
+}
+
+function Set-ServerProperty {
+    param([string]$Name, [string]$Value)
+    $replacement = "$Name=$Value"
+    for ($i = 0; $i -lt $properties.Count; $i++) {
+        if ($properties[$i] -match "^$([regex]::Escape($Name))=") {
+            $properties[$i] = $replacement
+            return
+        }
+    }
+    $properties.Add($replacement)
+}
+
+Set-ServerProperty -Name 'allow-flight' -Value 'true'
+Set-ServerProperty -Name 'max-tick-time' -Value '180000'
+Set-ServerProperty -Name 'motd' -Value 'SkyCraft ATM10Sky'
+Set-ServerProperty -Name 'level-type' -Value 'skycraft\:mirror'
+Set-Content -LiteralPath $propertiesFile -Value $properties -Encoding ascii
+
 $jvmFile = Join-Path $Destination 'user_jvm_args.txt'
 $jvm = Get-Content -LiteralPath $jvmFile
 if ($jvm -notcontains '-Xms2G') { Add-Content -LiteralPath $jvmFile -Value '-Xms2G' }
@@ -42,5 +73,6 @@ if ($jvm -notcontains '-Xmx4G') { Add-Content -LiteralPath $jvmFile -Value '-Xmx
 if ($jvm -notcontains '--enable-preview') { Add-Content -LiteralPath $jvmFile -Value '--enable-preview' }
 
 Write-Host "Prepared server: $Destination" -ForegroundColor Green
+Write-Host 'The shared server uses SkyCraft mirror world generation instead of a generated sky island.'
 Write-Host 'Run startserver.bat, read/accept the Minecraft EULA, and wait for the e4mc Domain assigned line.'
 Write-Host 'The e4mc address changes each time the server restarts.'

@@ -19,6 +19,10 @@ Each player installs those from their official sources.
 
 ## Client setup
 
+For a friend, the short version is: install the prerequisites above, install
+the supplied Vortex patch, run `Install-Client.ps1`, then enter the host's
+e4mc address when the installer asks for a server.
+
 1. Install `SkyCraft-ATM10Sky-Vortex-Patch.zip` with Vortex after normal
    SkyCraft and let the patch win its two file conflicts.
 2. Extract this compatibility package to any folder.
@@ -53,6 +57,13 @@ animated contraptions are rendered by Minecraft's fallback renderer.
 The e4mc name changes whenever the server restarts. Port forwarding is not
 needed. The server and every client must use the same SkyCraft ATM10Sky jar.
 
+`Prepare-Server.ps1` selects `skycraft:mirror` as the server's empty shared
+world, so it does not generate a separate starting sky island. SkyblockBuilder
+and SkyGUIs must remain installed on both server and clients because NeoForge
+requires their network channels to match during login. Clients therefore keep
+the normal ATM10Sky menus and quest support without letting the skyblock preset
+control the shared server world.
+
 ## Multiplayer model
 
 - Minecraft blocks, inventories, machines, mobs, players, teams, and FTB quest
@@ -77,4 +88,5 @@ needed. The server and every client must use the same SkyCraft ATM10Sky jar.
 
 The dedicated server path was tested on Minecraft 1.21.1, NeoForge 21.1.250,
 ATM10 To the Sky 2.0.6, and e4mc NeoForge 6.1.1. A SkyCraft client authenticated,
-spawned, received the ATM skyblock first-join setup, and reached `joined the game`.
+spawned in the empty SkyCraft mirror world, retained the ATM quest/mod support,
+and reached `joined the game` with the server's matching mod channels.
