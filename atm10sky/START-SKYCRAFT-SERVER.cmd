@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 title SkyCraft ATM10Sky Server
 cd /d "%~dp0"
 
@@ -11,6 +11,29 @@ if not exist "%~dp0startserver.bat" (
     exit /b 1
 )
 
+rem SkyCraft uses Java 21 preview bytecode, which cannot run on Java 22 or newer.
+rem Respect a manually configured ATM10_JAVA first, then try common Java 21 locations.
+if not defined ATM10_JAVA if exist "%ProgramFiles%\Java\jdk-21\bin\java.exe" set "ATM10_JAVA=%ProgramFiles%\Java\jdk-21\bin\java.exe"
+if not defined ATM10_JAVA for /d %%D in ("%ProgramFiles%\Java\jdk-21*") do if exist "%%~fD\bin\java.exe" set "ATM10_JAVA=%%~fD\bin\java.exe"
+if not defined ATM10_JAVA for /d %%D in ("%ProgramFiles%\Eclipse Adoptium\jdk-21*") do if exist "%%~fD\bin\java.exe" set "ATM10_JAVA=%%~fD\bin\java.exe"
+if not defined ATM10_JAVA for /d %%D in ("%ProgramFiles%\Microsoft\jdk-21*") do if exist "%%~fD\bin\java.exe" set "ATM10_JAVA=%%~fD\bin\java.exe"
+if not defined ATM10_JAVA for /d %%D in ("%ProgramFiles%\Amazon Corretto\jdk21*") do if exist "%%~fD\bin\java.exe" set "ATM10_JAVA=%%~fD\bin\java.exe"
+if not defined ATM10_JAVA set "ATM10_JAVA=java"
+
+"%ATM10_JAVA%" -XshowSettings:properties -version 2>&1 | "%SystemRoot%\System32\findstr.exe" /C:"java.version = 21." >nul
+if errorlevel 1 (
+    echo ERROR: SkyCraft ATM10Sky requires Java 21 exactly.
+    echo The selected runtime is: %ATM10_JAVA%
+    "%ATM10_JAVA%" -version
+    echo Install a 64-bit Java 21 JDK, or set ATM10_JAVA to its full java.exe path.
+    echo Java 22, 23, and 24 cannot load SkyCraft's Java 21 preview classes.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo Using Java 21: %ATM10_JAVA%
+echo.
 echo Starting the SkyCraft ATM10Sky server...
 echo.
 echo Wait for both of these messages before joining:

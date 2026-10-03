@@ -93,6 +93,9 @@ login and failures are not hidden from the player.
 
 The e4mc name changes whenever the server restarts. Port forwarding is not
 needed. The server and every client must use the same SkyCraft ATM10Sky jar.
+The supplied launcher finds and verifies a 64-bit Java 21 runtime. Java 22 or
+newer cannot run SkyCraft's Java 21 preview classes, even though the upstream
+ATM server batch normally accepts any Java version numbered 21 or higher.
 
 The dedicated server saves the world, player inventories, FTB teams/quests, and
 mod data in its server folder using Minecraft's normal autosave. Always type
@@ -129,6 +132,8 @@ the pack's quests rather than an overpowered handout.
   the server and every client's `mods` folder.
 - **Preview features are not enabled:** keep `--enable-preview` in both the
   client JVM arguments and server `user_jvm_args.txt`.
+- **Class version `65.65535` versus `68.65535`:** the server accidentally used
+  Java 24. Start it with `START-SKYCRAFT-SERVER.cmd`, which selects Java 21.
 - **Invisible modded entities:** confirm Iris and Sodium remain disabled and
   `config\flywheel-client.toml` contains `backend = "flywheel:off"`.
 - **`Invalid argument: connect` in `sun.nio.ch.PipeImpl`:** this Windows/JDK
