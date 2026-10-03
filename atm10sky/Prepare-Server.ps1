@@ -35,6 +35,7 @@ $mods = Join-Path $Destination 'mods'
 Copy-Item -LiteralPath $skycraftJar.FullName -Destination (Join-Path $mods $skycraftJar.Name) -Force
 Copy-Item -LiteralPath $e4mcJar.FullName -Destination (Join-Path $mods $e4mcJar.Name) -Force
 Copy-Item -LiteralPath (Join-Path $packageRoot 'START-SKYCRAFT-SERVER.cmd') -Destination $Destination -Force
+Copy-Item -LiteralPath (Join-Path $packageRoot 'Write-Server-Address.ps1') -Destination $Destination -Force
 
 $propertiesFile = Join-Path $Destination 'server.properties'
 $properties = [System.Collections.Generic.List[string]]::new()
@@ -75,4 +76,5 @@ if ($jvm -notcontains '--enable-preview') { Add-Content -LiteralPath $jvmFile -V
 Write-Host "Prepared server: $Destination" -ForegroundColor Green
 Write-Host 'The shared server uses SkyCraft mirror world generation instead of a generated sky island.'
 Write-Host 'Double-click START-SKYCRAFT-SERVER.cmd, read/accept the Minecraft EULA, and wait for the e4mc Domain assigned line.'
+Write-Host 'The current public address is also written to SERVER-ADDRESS.txt in the server folder.'
 Write-Host 'The e4mc address changes each time the server restarts.'

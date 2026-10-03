@@ -54,6 +54,7 @@ echo Send the e4mc.link address to your friends each time the server starts.
 echo To save safely, type stop in this window when everyone is finished.
 echo.
 
+start "SkyCraft address watcher" /min powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0Write-Server-Address.ps1" -ServerDirectory "%~dp0" -IgnoreExisting
 call "%~dp0startserver.bat"
 set "SERVER_EXIT=%ERRORLEVEL%"
 

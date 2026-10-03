@@ -87,7 +87,8 @@ intentional so account login and failures are not hidden from the player.
    first run, read and accept the Minecraft EULA when prompted. The server starts
    when the host runs this file; it does not start automatically with Windows.
 4. Wait for `Done` and `Domain assigned: something.e4mc.link` in the server
-   console. Send that e4mc address to friends.
+   console. The launcher also writes the current address and friend instructions
+   to `SERVER-ADDRESS.txt` in the server folder. Send that address to friends.
 5. On the host PC, put `join=localhost:25565` in the ATM10Sky instance's
    `.minecraft\config\skycraft.properties`. The installer already does this when
    the host enters `localhost:25565`. Friends can run
