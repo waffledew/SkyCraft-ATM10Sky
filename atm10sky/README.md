@@ -67,10 +67,12 @@ Sodium because they replace rendering paths SkyCraft exports into Skyrim.
 Flywheel is set to its compatible `off` backend; Create still works, but its
 animated contraptions are rendered by Minecraft's fallback renderer.
 
-Minecraft's game window and Prism console stay hidden during normal play, so
-friends interact only with Skyrim. Prism can appear for the initial Microsoft
-sign-in or when a launch error needs attention; this is intentional so account
-login and failures are not hidden from the player.
+Minecraft's game window is removed from the Windows taskbar and normal Alt-Tab
+list, then parked off-screen during play, so friends interact only with Skyrim.
+It is not minimized or truly hidden because some GPU drivers throttle an OpenGL
+window in those states and make SkyCraft stutter. Prism can appear for the
+initial Microsoft sign-in or when a launch error needs attention; this is
+intentional so account login and failures are not hidden from the player.
 
 ## Dedicated server (recommended)
 
@@ -96,6 +98,9 @@ needed. The server and every client must use the same SkyCraft ATM10Sky jar.
 The supplied launcher finds and verifies a 64-bit Java 21 runtime. Java 22 or
 newer cannot run SkyCraft's Java 21 preview classes, even though the upstream
 ATM server batch normally accepts any Java version numbered 21 or higher.
+It also refuses to start if port 25565 already has a server listening and turns
+off the upstream batch file's automatic crash-restart loop, preventing duplicate
+servers from repeatedly fighting over the same world.
 
 The dedicated server saves the world, player inventories, FTB teams/quests, and
 mod data in its server folder using Minecraft's normal autosave. Always type

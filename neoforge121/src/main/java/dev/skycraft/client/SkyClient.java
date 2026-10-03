@@ -1,5 +1,8 @@
 package dev.skycraft.client;
 
+import com.sun.jna.Library;
+import com.sun.jna.Native;
+import com.sun.jna.Pointer;
 import dev.skycraft.SkyCraft;
 import dev.skycraft.client.render.WorldExporter;
 import dev.skycraft.link.Proto;
@@ -12,6 +15,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.glfw.GLFWNativeWin32;
+import org.lwjgl.system.Platform;
 
 /**
  * Per-frame glue between the Minecraft client and Skyrim. Everything here runs on the render
@@ -33,6 +38,7 @@ public final class SkyClient {
 	private static volatile boolean linked;
 	private static boolean tookOver;
 	private static boolean windowHidden;
+	private static boolean taskbarHidden;
 	private static int appliedViewportW, appliedViewportH;
 
 	// Teleport / hold state: Skyrim decides where the player is after loads, doors and respawns.
@@ -449,9 +455,49 @@ public final class SkyClient {
 		}
 		windowHidden = true;
 		long handle = minecraft.getWindow().getWindow();
+		hideWindowsTaskbarEntry(handle);
 		GLFW.glfwSetWindowPos(handle, -10000, -10000);
 		GLFW.glfwShowWindow(handle);
-		SkyCraft.LOG.info("SkyCraft: game window parked off-screen (run with -Dskycraft.showWindow=true to keep it visible)");
+		SkyCraft.LOG.info("SkyCraft: game window removed from the taskbar and parked off-screen (run with -Dskycraft.showWindow=true to keep it visible)");
+	}
+
+	/**
+	 * A truly hidden or minimized GLFW window may be throttled indefinitely by some Windows GPU
+	 * drivers. Instead, make it a tool window (not shown in the taskbar or normal Alt-Tab list) and
+	 * leave it rendering off-screen at the linked frame rate.
+	 */
+	private static void hideWindowsTaskbarEntry(long glfwWindow) {
+		if (taskbarHidden || Platform.get() != Platform.WINDOWS) {
+			return;
+		}
+		try {
+			Pointer hwnd = new Pointer(GLFWNativeWin32.glfwGetWin32Window(glfwWindow));
+			long style = User32.INSTANCE.GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+			style = (style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW;
+			User32.INSTANCE.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style);
+			User32.INSTANCE.SetWindowPos(hwnd, Pointer.NULL, 0, 0, 0, 0,
+				SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+			taskbarHidden = true;
+		} catch (Throwable e) {
+			SkyCraft.LOG.warn("SkyCraft: could not remove the Minecraft window from the Windows taskbar", e);
+		}
+	}
+
+	private static final int GWL_EXSTYLE = -20;
+	private static final long WS_EX_TOOLWINDOW = 0x00000080L;
+	private static final long WS_EX_APPWINDOW = 0x00040000L;
+	private static final int SWP_NOSIZE = 0x0001;
+	private static final int SWP_NOMOVE = 0x0002;
+	private static final int SWP_NOZORDER = 0x0004;
+	private static final int SWP_NOACTIVATE = 0x0010;
+	private static final int SWP_FRAMECHANGED = 0x0020;
+
+	private interface User32 extends Library {
+		User32 INSTANCE = Native.load("user32", User32.class);
+
+		long GetWindowLongPtrW(Pointer window, int index);
+		long SetWindowLongPtrW(Pointer window, int index, long value);
+		boolean SetWindowPos(Pointer window, Pointer insertAfter, int x, int y, int width, int height, int flags);
 	}
 
 	private static void applyViewportSize(Minecraft minecraft) {

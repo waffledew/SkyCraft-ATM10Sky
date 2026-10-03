@@ -11,6 +11,15 @@ if not exist "%~dp0startserver.bat" (
     exit /b 1
 )
 
+"%SystemRoot%\System32\netstat.exe" -ano -p tcp | "%SystemRoot%\System32\findstr.exe" /R /C:":25565 .*LISTENING" >nul
+if not errorlevel 1 (
+    echo SkyCraft ATM10Sky is already running on port 25565.
+    echo Do not start a second copy; use the existing server window.
+    echo.
+    pause
+    exit /b 0
+)
+
 rem SkyCraft uses Java 21 preview bytecode, which cannot run on Java 22 or newer.
 rem Respect a manually configured ATM10_JAVA first, then try common Java 21 locations.
 if not defined ATM10_JAVA if exist "%ProgramFiles%\Java\jdk-21\bin\java.exe" set "ATM10_JAVA=%ProgramFiles%\Java\jdk-21\bin\java.exe"
@@ -19,6 +28,7 @@ if not defined ATM10_JAVA for /d %%D in ("%ProgramFiles%\Eclipse Adoptium\jdk-21
 if not defined ATM10_JAVA for /d %%D in ("%ProgramFiles%\Microsoft\jdk-21*") do if exist "%%~fD\bin\java.exe" set "ATM10_JAVA=%%~fD\bin\java.exe"
 if not defined ATM10_JAVA for /d %%D in ("%ProgramFiles%\Amazon Corretto\jdk21*") do if exist "%%~fD\bin\java.exe" set "ATM10_JAVA=%%~fD\bin\java.exe"
 if not defined ATM10_JAVA set "ATM10_JAVA=java"
+if not defined ATM10_RESTART set "ATM10_RESTART=false"
 
 "%ATM10_JAVA%" -XshowSettings:properties -version 2>&1 | "%SystemRoot%\System32\findstr.exe" /C:"java.version = 21." >nul
 if errorlevel 1 (
