@@ -16,6 +16,9 @@ Then:
 3. Paste the host's e4mc.link address when asked. The host enters localhost:25565.
 4. Start Skyrim through SKSE.
 
+The first ATM10Sky load can take several minutes. Click SKSE only once and wait.
+Do not separately launch CurseForge, Prism, or another Minecraft copy.
+
 When the host restarts the server, its e4mc.link address normally changes. Double-click
 CHANGE-SERVER-ADDRESS.cmd, paste the new address, and then start Skyrim through SKSE.
 
@@ -24,6 +27,10 @@ After Prepare-Server.ps1 finishes, double-click START-SKYCRAFT-SERVER.cmd inside
 prepared server folder. Wait for "Done" and "Domain assigned", then send friends the
 displayed e4mc.link address. The address is also saved in SERVER-ADDRESS.txt beside
 the launcher. Type stop in that server window before closing it.
+
+The host uses localhost:25565 and does not paste the public address. Friends should
+treat the e4mc address like an invite link and avoid posting it publicly unless the
+host intends to run a public server.
 
 If Windows asks what should open the .cmd file, choose Windows Command Processor.
 The .ps1 files are underlying advanced scripts; friends normally do not need to open them.

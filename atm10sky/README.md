@@ -16,6 +16,11 @@ team or the original SkyCraft author.
 - A legitimate Minecraft Java account signed into that Prism Launcher.
 - ATM10 To the Sky **2.0.6** installed through CurseForge.
 
+Use SKSE64 and Address Library builds that match the player's installed Skyrim
+runtime. This package does not downgrade Skyrim or choose those versions. A PC
+with at least 16 GB of system RAM is strongly recommended; 24 GB or more gives
+Skyrim and ATM10Sky more breathing room when running together.
+
 Do not share Minecraft accounts, Skyrim game files, or the complete ATM modpack.
 Each player installs those from their official sources.
 
@@ -43,6 +48,16 @@ address when the installer asks for a server. No PowerShell knowledge is needed.
    instance, and creates an isolated Prism instance named `SkyCraft ATM10SKY`.
 4. Start Skyrim through SKSE. This patch launches the `SkyCraft ATM10SKY`
    profile automatically; there is no vanilla/modded prompt.
+
+### Which address to enter
+
+- **Host PC:** `localhost:25565`
+- **Friend's PC:** the current address from the host's `SERVER-ADDRESS.txt`, for
+  example `example-name.na.e4mc.link`
+- **Not ready yet:** leave it blank and run `CHANGE-SERVER-ADDRESS.cmd` later
+
+Do not include `https://`, a slash, or surrounding quotation marks. Close Skyrim
+before changing the address, then relaunch it through SKSE.
 
 If the host restarts the server and receives a new e4mc address, close Skyrim,
 double-click `CHANGE-SERVER-ADDRESS.cmd`, paste the new address, and launch Skyrim
@@ -74,7 +89,17 @@ window in those states and make SkyCraft stutter. Prism can appear for the
 initial Microsoft sign-in or when a launch error needs attention; this is
 intentional so account login and failures are not hidden from the player.
 
+The first launch can take several minutes because ATM10Sky has hundreds of mods.
+Do not repeatedly click SKSE or start a second Prism/Minecraft copy while it is
+loading. If it never connects, close Skyrim and inspect Prism or the generated
+profile's `.minecraft\logs\latest.log` for an account or mod-loading error.
+
 ## Dedicated server (recommended)
+
+Only the host prepares and runs a dedicated server. Friends install the client
+side only; they do not run `Prepare-Server.ps1` or `START-SKYCRAFT-SERVER.cmd`.
+
+### One-time host setup
 
 1. Download the official `ATM10SKY-2.0.6-server.zip` from the ATM team.
 2. Run:
@@ -94,6 +119,21 @@ intentional so account login and failures are not hidden from the player.
    the host enters `localhost:25565`. Friends can run
    `CHANGE-SERVER-ADDRESS.cmd` whenever the e4mc address changes.
 
+### Starting each session
+
+1. Double-click `START-SKYCRAFT-SERVER.cmd` once.
+2. Wait for the console to show `Done`. ATM10Sky can take a few minutes.
+3. Open `SERVER-ADDRESS.txt` beside the launcher. While starting, it says it is
+   waiting; once e4mc connects, it contains the current public address.
+4. Send that address privately to friends.
+5. Friends close Skyrim, run `CHANGE-SERVER-ADDRESS.cmd`, paste the address, and
+   relaunch Skyrim through SKSE. The host simply launches SKSE because its client
+   uses `localhost:25565`.
+
+If the launcher says a server is already listening on port 25565, use the
+existing server. Do not start another copy. A second copy cannot open the same
+world and will report a world-directory lock.
+
 The e4mc name changes whenever the server restarts. Port forwarding is not
 needed. The server and every client must use the same SkyCraft ATM10Sky jar.
 The supplied launcher finds and verifies a 64-bit Java 21 runtime. Java 22 or
@@ -109,6 +149,35 @@ mod data in its server folder using Minecraft's normal autosave. Always type
 (especially `world`, `config`, `defaultconfigs`, and the player/FTB data) before
 updates or experiments.
 
+### Private-server access
+
+An e4mc name removes the need for port forwarding, but it is still an invitation
+to the server while that server is online. For private play, enter these commands
+in the server console, replacing the example names with exact Minecraft Java
+usernames:
+
+```text
+whitelist on
+whitelist add HostMinecraftName
+whitelist add FriendMinecraftName
+```
+
+Use `whitelist list` to review access. Operators have powerful commands; grant
+one only when needed with `op MinecraftName`, and remove it with
+`deop MinecraftName`. For an intentionally public server, leave the whitelist
+off and plan appropriate moderation and backups.
+
+### Ending a session and backups
+
+1. Have players close Skyrim normally and wait for them to disconnect.
+2. Type `save-all flush` in the server console if you want an immediate save.
+3. Type `stop` and wait for the console to finish. Do not close the window with
+   the X button while the server is saving.
+4. Periodically copy or archive the entire prepared server folder while the
+   server is stopped. The `world` folder contains the world and player data;
+   other mod and FTB data also lives elsewhere in the server folder, so backing
+   up only `world` is less complete.
+
 `Prepare-Server.ps1` selects `skycraft:mirror` as the server's empty shared
 world, so it does not generate a separate starting sky island. SkyblockBuilder
 and SkyGUIs must remain installed on both server and clients because NeoForge
@@ -123,6 +192,9 @@ control the shared server world.
 - Skyrim NPCs, quests, locations, and save files stay local to each player.
 - A friend joining the Minecraft server does not join the host's Skyrim quest
   instance.
+- Skyrim save files are never transferred through the Minecraft server.
+- Minecraft chat, blocks, machines, inventories, teams, and supported mod
+  progression are shared; Skyrim NPC and quest decisions are not.
 
 ## New-player progression
 
@@ -133,6 +205,20 @@ and mod guidebooks remain available normally, so progression still starts from
 the pack's quests rather than an overpowered handout.
 
 ## Troubleshooting
+
+- **`SERVER-ADDRESS.txt` still says waiting:** wait for the server's `Done`
+  message. If it remains unchanged after ten minutes, search `logs\debug.log`
+  for `Domain assigned` or an e4mc connection error.
+- **World is locked / another process has locked the file:** another copy of the
+  server is already running. Close the newly started copy and use the original.
+- **Friend cannot connect after a restart:** e4mc usually assigned a new name.
+  Send the new `SERVER-ADDRESS.txt`; the friend must run
+  `CHANGE-SERVER-ADDRESS.cmd` while Skyrim is closed.
+- **ATM10Sky seems frozen during first load:** give it several minutes and do
+  not launch another copy. Check Prism only if the client never connects.
+- **Minecraft appears briefly:** a short startup flash is possible. After the
+  bridge initializes, its renderer is removed from the taskbar/normal Alt-Tab
+  list and parked off-screen without GPU-throttling minimization.
 
 - **Missing `skycraft:*` channels:** install the supplied SkyCraft jar in both
   the server and every client's `mods` folder.
@@ -152,3 +238,10 @@ The dedicated server path was tested on Minecraft 1.21.1, NeoForge 21.1.250,
 ATM10 To the Sky 2.0.6, and e4mc NeoForge 6.1.1. A SkyCraft client authenticated,
 spawned in the empty SkyCraft mirror world, retained the ATM quest/mod support,
 and reached `joined the game` with the server's matching mod channels.
+
+## Updating
+
+Back up the stopped server before changing ATM10Sky, NeoForge, SkyCraft, or any
+individual mod. Update the host and every friend together. A release built for a
+different ATM10Sky version should be treated as incompatible until explicitly
+tested; this guide and installer target ATM10 To the Sky 2.0.6 only.

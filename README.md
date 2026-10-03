@@ -40,6 +40,22 @@ location, asks for the server address, and selects a memory limit based on the
 PC's installed RAM. Skyrim SE/AE makes this a Windows-only project, but it does
 not assume a particular Windows username or install drive.
 
+## Quick start
+
+Every player first installs Skyrim SE/AE, matching SKSE64 and Address Library,
+normal SkyCraft 0.1.2, Minecraft Java Edition, and ATM10 To the Sky 2.0.6. Then:
+
+1. Install this release's Vortex patch after normal SkyCraft.
+2. Double-click `INSTALL-ATM10SKY.cmd` and enter the server address when asked.
+3. The host enters `localhost:25565`; friends enter the host's current
+   `e4mc.link` address.
+4. Start Skyrim through SKSE. Do not separately start CurseForge or Prism.
+
+For each multiplayer session, the host starts the prepared server once, waits
+for `Done`, and opens `SERVER-ADDRESS.txt`. Friends run
+`CHANGE-SERVER-ADDRESS.cmd` if that address changed, then everyone launches
+Skyrim through SKSE. The first ATM10Sky client load can take several minutes.
+
 ## Multiplayer and saves
 
 The recommended setup uses the official ATM10Sky 2.0.6 dedicated-server pack
@@ -49,6 +65,12 @@ without router port forwarding.
 The dedicated server normally autosaves its world, player inventories, FTB
 teams and quests, and mod data. Always enter `stop` in its console before closing
 it, and back up the complete server folder before updates.
+
+Treat the e4mc address like an invitation link: anyone who has it can attempt to
+join while the server is running. Private hosts should enable Minecraft's
+whitelist and add each friend's exact Java Edition username. All players must
+stay on ATM10Sky 2.0.6 and the same SkyCraft release; do not update individual
+mods on only one computer.
 
 New players receive one balanced kit: iron armor, iron sword, pickaxe, axe and
 shovel, 16 cooked beef, and 16 torches. ATM10Sky quests and guidebooks remain
