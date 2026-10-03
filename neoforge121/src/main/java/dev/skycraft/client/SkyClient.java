@@ -56,6 +56,7 @@ public final class SkyClient {
 	private static int lastPacedSeq;
 	private static boolean skyrimStalled;
 	private static int exporterErrors;
+	private static volatile float effectiveFov;
 
 	private SkyClient() {
 	}
@@ -74,6 +75,13 @@ public final class SkyClient {
 
 	public static SkyLink.SkyState sky() {
 		return sky;
+	}
+
+	/** Called after every mod has had a chance to alter Minecraft's rendered world FOV. */
+	public static void setEffectiveFov(float fov) {
+		if (Float.isFinite(fov) && fov > 1.0F && fov < 179.0F) {
+			effectiveFov = fov;
+		}
 	}
 
 	/** Start of Minecraft.runTick: pull state and input from Skyrim before anything else runs. */
@@ -394,7 +402,7 @@ public final class SkyClient {
 			mc.eyeX = eye.x;
 			mc.eyeY = eye.y;
 			mc.eyeZ = eye.z;
-			mc.fov = minecraft.options.fov().get().floatValue();
+			mc.fov = effectiveFov > 1.0F ? effectiveFov : minecraft.options.fov().get().floatValue();
 			// Minecraft's F5 camera: Skyrim puts its camera where Minecraft's would be.
 			mc.cameraMode = minecraft.options.getCameraType().ordinal();
 			mc.cameraDistance = camera.isDetached() ? (float) camera.getPosition().distanceTo(player.getEyePosition(partial)) : 0.0F;

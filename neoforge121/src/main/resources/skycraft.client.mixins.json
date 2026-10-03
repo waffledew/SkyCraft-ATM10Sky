@@ -8,6 +8,7 @@
     "ClientLevelDigMixin",
     "EntityCollideMixin",
     "FramerateLimitTrackerMixin",
+    "GameRendererFovMixin",
     "GuiMixin",
     "InputConstantsMixin",
     "KeyboardHandlerAccessor",
