@@ -38,7 +38,7 @@ public final class SkyClient {
 	private static volatile boolean linked;
 	private static boolean tookOver;
 	private static boolean windowHidden;
-	private static boolean taskbarHidden;
+	private static boolean skyrimWasPlayable;
 	private static int appliedViewportW, appliedViewportH;
 
 	// Teleport / hold state: Skyrim decides where the player is after loads, doors and respawns.
@@ -109,12 +109,18 @@ public final class SkyClient {
 			}
 		}
 		if (!linked) {
+			skyrimWasPlayable = false;
 			return;
 		}
 
 		Minecraft minecraft = Minecraft.getInstance();
 		hideWindowOnce(minecraft);
 		applyViewportSize(minecraft);
+		boolean skyrimPlayable = sky.inGame() && !sky.loading();
+		if (skyrimPlayable && !skyrimWasPlayable) {
+			WorldExporter.requestLoadedResend();
+		}
+		skyrimWasPlayable = skyrimPlayable;
 		MirrorWorld.openWhenReady(minecraft);
 
 		if (sky.menuOpen() || sky.loading()) {
@@ -342,11 +348,23 @@ public final class SkyClient {
 		Minecraft minecraft = Minecraft.getInstance();
 		LocalPlayer player = minecraft.player;
 		int flags = 0;
+		boolean minecraftHasWorld = player != null && minecraft.level != null;
+		if (minecraftHasWorld) {
+			try {
+				WorldExporter.frame(minecraft, minecraft.getTimer().getGameTimeDeltaPartialTick(false));
+			} catch (RuntimeException e) {
+				if (exporterErrors++ < 5) {
+					SkyCraft.LOG.error("SkyCraft: world export failed", e);
+				}
+			}
+		}
 		if (player != null && minecraft.level != null) {
 			float partial = minecraft.getTimer().getGameTimeDeltaPartialTick(false);
 			Vec3 feet = player.getPosition(partial);
 			Camera camera = minecraft.gameRenderer.getMainCamera();
-			flags |= Proto.MC_IN_WORLD;
+			if (WorldExporter.ready()) {
+				flags |= Proto.MC_IN_WORLD;
+			}
 			if (player.onGround()) {
 				flags |= Proto.MC_ON_GROUND;
 			}
@@ -396,14 +414,7 @@ public final class SkyClient {
 		mc.frameCounter = ++frameCounter;
 		SkyLink.writeMcState(mc);
 
-		if ((flags & Proto.MC_IN_WORLD) != 0) {
-			try {
-				WorldExporter.frame(minecraft, minecraft.getTimer().getGameTimeDeltaPartialTick(false));
-			} catch (RuntimeException e) {
-				if (exporterErrors++ < 5) {
-					SkyCraft.LOG.error("SkyCraft: world export failed", e);
-				}
-			}
+		if (minecraftHasWorld) {
 			FrameExporter.capture(minecraft);
 		}
 	}
@@ -454,11 +465,17 @@ public final class SkyClient {
 			return;
 		}
 		windowHidden = true;
+		parkWindow(minecraft);
+		SkyCraft.LOG.info("SkyCraft: game window removed from the taskbar and parked off-screen (run with -Dskycraft.showWindow=true to keep it visible)");
+	}
+
+	private static void parkWindow(Minecraft minecraft) {
 		long handle = minecraft.getWindow().getWindow();
-		hideWindowsTaskbarEntry(handle);
 		GLFW.glfwSetWindowPos(handle, -10000, -10000);
 		GLFW.glfwShowWindow(handle);
-		SkyCraft.LOG.info("SkyCraft: game window removed from the taskbar and parked off-screen (run with -Dskycraft.showWindow=true to keep it visible)");
+		// GLFW can restore its own extended styles while changing the windowed viewport. Apply the
+		// tool-window style last so the parked renderer also disappears from Alt-Tab.
+		hideWindowsTaskbarEntry(handle);
 	}
 
 	/**
@@ -467,7 +484,7 @@ public final class SkyClient {
 	 * leave it rendering off-screen at the linked frame rate.
 	 */
 	private static void hideWindowsTaskbarEntry(long glfwWindow) {
-		if (taskbarHidden || Platform.get() != Platform.WINDOWS) {
+		if (Platform.get() != Platform.WINDOWS) {
 			return;
 		}
 		try {
@@ -477,7 +494,6 @@ public final class SkyClient {
 			User32.INSTANCE.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style);
 			User32.INSTANCE.SetWindowPos(hwnd, Pointer.NULL, 0, 0, 0, 0,
 				SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
-			taskbarHidden = true;
 		} catch (Throwable e) {
 			SkyCraft.LOG.warn("SkyCraft: could not remove the Minecraft window from the Windows taskbar", e);
 		}
@@ -509,6 +525,9 @@ public final class SkyClient {
 		appliedViewportW = w;
 		appliedViewportH = h;
 		minecraft.getWindow().setWindowed(w, h);
+		if (START_HIDDEN && !SHOW_WINDOW) {
+			parkWindow(minecraft);
+		}
 		SkyCraft.LOG.info("SkyCraft: sizing overlay to Skyrim viewport {}x{}", w, h);
 	}
 

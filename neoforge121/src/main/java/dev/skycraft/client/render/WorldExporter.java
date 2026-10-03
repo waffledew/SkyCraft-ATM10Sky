@@ -69,6 +69,9 @@ public final class WorldExporter {
 	private static final ByteBuffer LIGHTS = ByteBuffer.allocate(16 * 16 * 16 * 8).order(ByteOrder.LITTLE_ENDIAN);
 	private static int sentGeneration = Integer.MIN_VALUE;
 	private static int meshesSent;
+	private static int initialRescanFrames;
+	private static volatile boolean ready;
+	private static volatile boolean loadedResendRequested;
 	private static ClientLevel sentLevel;
 	private static SkyAtlas atlas;
 	private static BlockRenderDispatcher blockRenderer;
@@ -94,6 +97,17 @@ public final class WorldExporter {
 		}
 	}
 
+	/** Skyrim just finished a load: resend every currently loaded block section before play resumes. */
+	public static void requestLoadedResend() {
+		loadedResendRequested = true;
+		ready = false;
+	}
+
+	/** True only after the initial delayed chunk scan and all queued block meshes have been sent. */
+	public static boolean ready() {
+		return ready;
+	}
+
 	public static void frame(Minecraft minecraft, float partialTick) {
 		ClientLevel level = minecraft.level;
 		if (level == null || minecraft.player == null || !SkyLink.active()) {
@@ -102,7 +116,21 @@ public final class WorldExporter {
 		if (sentGeneration != SkyLink.generation() || sentLevel != level || atlas == null || atlas.stale(minecraft)) {
 			resendEverything(minecraft, level);
 		}
+		if (loadedResendRequested) {
+			loadedResendRequested = false;
+			int queued = queueLoadedSections(minecraft, level);
+			SkyCraft.LOG.info("SkyCraft: Skyrim entered its world; queued {} loaded block sections for resend", queued);
+		}
+		// A ClientLevel exists slightly before its chunks finish arriving. Scan again after three
+		// seconds so a title-screen world cannot report ready with an accidentally empty first scan.
+		if (initialRescanFrames > 0 && --initialRescanFrames == 0) {
+			int queued = queueLoadedSections(minecraft, level);
+			SkyCraft.LOG.info("SkyCraft: delayed world-ready scan queued {} loaded block sections", queued);
+		}
 		meshDirtySections(level);
+		if (initialRescanFrames == 0 && dirtyEmpty()) {
+			ready = true;
+		}
 		// Animated textures (water, lava, fire, ...): the frame for this game tick.
 		atlas.animate(level.getGameTime(), region -> {
 			ByteBuffer header = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN).putInt(region.x()).putInt(region.y()).putInt(region.w()).putInt(region.h()).flip();
@@ -113,6 +141,8 @@ public final class WorldExporter {
 	}
 
 	private static void resendEverything(Minecraft minecraft, ClientLevel level) {
+		ready = false;
+		initialRescanFrames = 180;
 		sentGeneration = SkyLink.generation();
 		sentLevel = level;
 		atlas = SkyAtlas.build(minecraft);
@@ -129,7 +159,12 @@ public final class WorldExporter {
 		SOLID.clear();
 		DUG.clear();
 		dev.skycraft.client.SkyDigClient.resendAll();
-		// Everything already loaded needs meshing again; later chunk loads mark themselves dirty.
+		queueLoadedSections(minecraft, level);
+	}
+
+	/** Queue every non-air section currently present in the client's effective render distance. */
+	private static int queueLoadedSections(Minecraft minecraft, ClientLevel level) {
+		int queued = 0;
 		int radius = minecraft.options.getEffectiveRenderDistance() + 1;
 		int pcx = SectionPos.blockToSectionCoord(minecraft.player.getBlockX()), pcz = SectionPos.blockToSectionCoord(minecraft.player.getBlockZ());
 		for (int cx = pcx - radius; cx <= pcx + radius; cx++) {
@@ -142,9 +177,17 @@ public final class WorldExporter {
 				for (int i = 0; i < sections.length; i++) {
 					if (!sections[i].hasOnlyAir()) {
 						markDirty(cx, chunk.getSectionYFromSectionIndex(i), cz);
+						queued++;
 					}
 				}
 			}
+		}
+		return queued;
+	}
+
+	private static boolean dirtyEmpty() {
+		synchronized (DIRTY) {
+			return DIRTY.isEmpty();
 		}
 	}
 
