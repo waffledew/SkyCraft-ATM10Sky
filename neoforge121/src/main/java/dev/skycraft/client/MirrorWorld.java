@@ -20,6 +20,11 @@ public final class MirrorWorld {
 		ResourceKey.create(Registries.WORLD_PRESET, ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "mirror"));
 	private static boolean attempted;
 	private static long lastLog;
+	// A configured localhost is a convenience for the host, not a requirement. If its dedicated
+	// server is offline, skip it for the rest of this Minecraft session and use the local world.
+	private static boolean skipConfiguredLocal;
+	private static @org.jspecify.annotations.Nullable String attemptedJoin;
+	private static boolean attemptedConfiguredJoin;
 	// /join: a friend's world for this session (the e4mc link their "Open to LAN" shows); null: our own.
 	private static @org.jspecify.annotations.Nullable String sessionJoin;
 	// Shown in chat once the player is in a world again (why they're back in their own, ...).
@@ -106,11 +111,20 @@ public final class MirrorWorld {
 	public static void openWhenReady(Minecraft minecraft) {
 		// Couldn't reach a friend's world, or it closed under us: back to our own, and say why.
 		if (minecraft.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen && minecraft.level == null) {
-			pendingNote = sessionJoin != null
-				? "Couldn't stay in " + sessionJoin + " (check the link, and that your friend's world is still open to LAN). You're back in your own world."
-				: "Disconnected. You're back in your own world.";
-			SkyCraft.LOG.info("SkyCraft: disconnected; back to the mirror world");
+			boolean localServerUnavailable = attemptedConfiguredJoin && isLocalAddress(attemptedJoin);
+			if (localServerUnavailable) {
+				skipConfiguredLocal = true;
+				pendingNote = "The local dedicated server isn't running. You're using your own SkyCraft world.";
+				SkyCraft.LOG.info("SkyCraft: local server unavailable; opening the local mirror world instead");
+			} else {
+				pendingNote = sessionJoin != null
+					? "Couldn't stay in " + sessionJoin + " (check the link, and that your friend's world is still open to LAN). You're back in your own world."
+					: "Disconnected. You're back in your own world.";
+				SkyCraft.LOG.info("SkyCraft: disconnected; back to the mirror world");
+			}
 			sessionJoin = null;
+			attemptedJoin = null;
+			attemptedConfiguredJoin = false;
 			attempted = false;
 			minecraft.setScreen(new TitleScreen());
 			return;
@@ -136,8 +150,11 @@ public final class MirrorWorld {
 		TitleScreen title = (TitleScreen) minecraft.screen;
 		attempted = true;
 		// Multiplayer: join a friend's world (their e4mc link, or any server address) instead.
-		String join = sessionJoin != null ? sessionJoin : joinAddress(minecraft);
+		String configuredJoin = skipConfiguredLocal ? null : joinAddress(minecraft);
+		String join = sessionJoin != null ? sessionJoin : configuredJoin;
 		if (join != null) {
+			attemptedJoin = join;
+			attemptedConfiguredJoin = sessionJoin == null;
 			SkyCraft.LOG.info("SkyCraft: joining {}", join);
 			pendingNote = "Joined " + join + ". Type /leave to go back to your own world.";
 			net.minecraft.client.gui.screens.ConnectScreen.startConnecting(title, minecraft, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(join),
@@ -166,5 +183,15 @@ public final class MirrorWorld {
 			registries -> registries.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(PRESET).value().createWorldDimensions(),
 			title
 		);
+	}
+
+	private static boolean isLocalAddress(@org.jspecify.annotations.Nullable String address) {
+		if (address == null) {
+			return false;
+		}
+		String value = address.trim().toLowerCase(java.util.Locale.ROOT);
+		return value.equals("localhost") || value.startsWith("localhost:") ||
+			value.equals("127.0.0.1") || value.startsWith("127.0.0.1:") ||
+			value.equals("::1") || value.equals("[::1]") || value.startsWith("[::1]:");
 	}
 }

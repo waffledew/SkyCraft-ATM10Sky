@@ -59,6 +59,12 @@ address when the installer asks for a server. No PowerShell knowledge is needed.
 Do not include `https://`, a slash, or surrounding quotation marks. Close Skyrim
 before changing the address, then relaunch it through SKSE.
 
+The host's localhost setting is optional at runtime: SkyCraft tries the dedicated
+server once, then automatically opens the profile's normal local mirror world if
+no server is running. It tries localhost again the next time Minecraft starts.
+Friend/e4mc addresses remain multiplayer destinations and are not treated as
+localhost fallbacks.
+
 If the host restarts the server and receives a new e4mc address, close Skyrim,
 double-click `CHANGE-SERVER-ADDRESS.cmd`, paste the new address, and launch Skyrim
 again. The helper updates the generated Prism profile; no configuration file needs
@@ -214,6 +220,9 @@ the pack's quests rather than an overpowered handout.
 - **Friend cannot connect after a restart:** e4mc usually assigned a new name.
   Send the new `SERVER-ADDRESS.txt`; the friend must run
   `CHANGE-SERVER-ADDRESS.cmd` while Skyrim is closed.
+- **Host sees one failed localhost connection with the server off:** this is
+  expected. SkyCraft then opens the host's local mirror world instead of retrying
+  forever. Start the dedicated server before SKSE when shared progress is wanted.
 - **ATM10Sky seems frozen during first load:** give it several minutes and do
   not launch another copy. Check Prism only if the client never connects.
 - **Minecraft appears briefly:** a short startup flash is possible. After the

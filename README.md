@@ -51,6 +51,11 @@ normal SkyCraft 0.1.2, Minecraft Java Edition, and ATM10 To the Sky 2.0.6. Then:
    `e4mc.link` address.
 4. Start Skyrim through SKSE. Do not separately start CurseForge or Prism.
 
+The host may play without starting the dedicated server. The client tries
+`localhost:25565` once and falls back to its own local SkyCraft mirror world when
+the server is offline. Start the server first whenever shared multiplayer world
+progress is wanted.
+
 For each multiplayer session, the host starts the prepared server once, waits
 for `Done`, and opens `SERVER-ADDRESS.txt`. Friends run
 `CHANGE-SERVER-ADDRESS.cmd` if that address changed, then everyone launches

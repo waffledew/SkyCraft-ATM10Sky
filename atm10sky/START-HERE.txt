@@ -19,6 +19,10 @@ Then:
 The first ATM10Sky load can take several minutes. Click SKSE only once and wait.
 Do not separately launch CurseForge, Prism, or another Minecraft copy.
 
+HOST: The dedicated server is optional for solo play. If localhost is offline, SkyCraft
+tries it once and then opens your normal local mirror world. Start the server before
+SKSE whenever you want shared multiplayer progress.
+
 When the host restarts the server, its e4mc.link address normally changes. Double-click
 CHANGE-SERVER-ADDRESS.cmd, paste the new address, and then start Skyrim through SKSE.
 
