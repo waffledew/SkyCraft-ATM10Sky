@@ -43,3 +43,10 @@ If Windows asks what should open the .cmd file, choose Windows Command Processor
 The .ps1 files are underlying advanced scripts; friends normally do not need to open them.
 
 For troubleshooting and server setup, read README.md.
+
+ALREADY INSTALLED? Close Skyrim and Minecraft, install this release's Vortex
+patch, and run UPDATE-ATM10SKY.cmd instead of reinstalling the full profile.
+Your saves, settings, and server address are kept. The updater sets NeoForge
+21.1.250 and installs the matching SkyCraft bridge. The host must also update
+the stopped server. Launch through SKSE, using the generated Prism profile.
+Character sync is included in the SkyCraft jar; no separate download is needed.

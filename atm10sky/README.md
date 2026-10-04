@@ -245,6 +245,12 @@ the pack's quests rather than an overpowered handout.
 
 - **Missing `skycraft:*` channels:** install the supplied SkyCraft jar in both
   the server and every client's `mods` folder.
+- **Incompatible client / Please use NeoForge 21.1.250:** close Skyrim and
+  Minecraft, run `UPDATE-ATM10SKY.cmd` from the current release, and start Skyrim
+  through SKSE. The generated `SkyCraft ATM10SKY` Prism profile is required;
+  launching the CurseForge source profile can use a different loader and omit
+  the bridge. Character/terrain synchronization channels are part of the
+  supplied SkyCraft jar, not a separate character-sync download.
 - **Preview features are not enabled:** keep `--enable-preview` in both the
   client JVM arguments and server `user_jvm_args.txt`.
 - **Class version `65.65535` versus `68.65535`:** the server accidentally used
@@ -263,6 +269,20 @@ spawned in the empty SkyCraft mirror world, retained the ATM quest/mod support,
 and reached `joined the game` with the server's matching mod channels.
 
 ## Updating
+
+Existing clients close Skyrim and Minecraft, extract the new release, install
+its Vortex patch, and double-click `UPDATE-ATM10SKY.cmd`. The updater preserves
+saves, mod configurations, the chosen server address, and launcher preferences.
+It backs up replaced bridge jars and launcher metadata inside the generated
+profile's `skycraft-update-backups` folder, and pins NeoForge to 21.1.250.
+Use `INSTALL-ATM10SKY.cmd` only for the first installation. Update the stopped
+server's SkyCraft jar to the same release before friends reconnect.
+
+Two Minecraft clients on one PC can test Minecraft networking and rendering,
+but they do not reproduce two players each running Skyrim. End-to-end Skyrim
+combat and terrain synchronization still require two independently linked
+Skyrim clients. This project does not currently provide a supported dual-Skyrim
+launcher for one PC.
 
 Back up the stopped server before changing ATM10Sky, NeoForge, SkyCraft, or any
 individual mod. Update the host and every friend together. A release built for a
