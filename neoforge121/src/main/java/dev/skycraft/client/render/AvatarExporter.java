@@ -45,6 +45,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ItemSupplier;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -88,6 +89,7 @@ final class AvatarExporter implements MultiBufferSource {
 	private long nextBlockEntityScanNanos;
 	private int scanChunkX = Integer.MIN_VALUE, scanChunkZ = Integer.MIN_VALUE;
 	private String activeRendererName;
+	private Entity activeEntity;
 	private int activeGetBufferCalls, activeNullBufferCalls, activeVertexCalls;
 	private final List<String> activeRenderTypes = new ArrayList<>();
 
@@ -133,6 +135,7 @@ final class AvatarExporter implements MultiBufferSource {
 			entityCount++;
 			int verticesBefore = capturedVertices();
 			try {
+				this.activeEntity = entity;
 				double x = Mth.lerp(partialTick, entity.xOld, entity.getX()) - origin[0];
 				double y = Mth.lerp(partialTick, entity.yOld, entity.getY()) - origin[1];
 				double z = Mth.lerp(partialTick, entity.zOld, entity.getZ()) - origin[2];
@@ -148,6 +151,8 @@ final class AvatarExporter implements MultiBufferSource {
 				}
 			} catch (Throwable ex) {
 				warnOnce("entity:" + entity.getType(), "couldn't capture entity " + entity.getType() + " for Skyrim", ex);
+			} finally {
+				this.activeEntity = null;
 			}
 		}
 
@@ -305,10 +310,15 @@ final class AvatarExporter implements MultiBufferSource {
 			String description = renderType.toString();
 			if (this.activeRenderTypes.size() < 8 && !this.activeRenderTypes.contains(description)) this.activeRenderTypes.add(description);
 		}
-		Batch b = this.renderTypeBatches.get(renderType);
-		if (b == null && !this.renderTypeBatches.containsKey(renderType)) {
-			b = makeBatch(renderType);
-			this.renderTypeBatches.put(renderType, b);
+		// PlayerModel uses a translucent layer for its transparent outer skin. Drawing the entire
+		// body as blended skips depth writes, letting the rear of the head and torso show through the
+		// front. Export player pixels as alpha-cutout instead: opaque skin writes depth and genuinely
+		// transparent overlay pixels are discarded.
+		boolean playerCutout = this.activeEntity instanceof Player;
+		Batch b = playerCutout ? null : this.renderTypeBatches.get(renderType);
+		if (b == null && (playerCutout || !this.renderTypeBatches.containsKey(renderType))) {
+			b = makeBatch(renderType, playerCutout);
+			if (!playerCutout) this.renderTypeBatches.put(renderType, b);
 		}
 		if (b == null) {
 			if (this.activeRendererName != null) this.activeNullBufferCalls++;
@@ -319,7 +329,7 @@ final class AvatarExporter implements MultiBufferSource {
 	}
 
 	@Nullable
-	private Batch makeBatch(RenderType renderType) {
+	private Batch makeBatch(RenderType renderType, boolean forceCutout) {
 		String name = renderType.toString().toLowerCase();
 		// Every CompositeState description contains a line_width state, so searching the whole
 		// string for "line" rejects normal solid/entity layers as well as actual line geometry.
@@ -333,13 +343,13 @@ final class AvatarExporter implements MultiBufferSource {
 			// several modded moving-block renderers use these layers from an entity renderer.
 			if (renderType == RenderType.solid() || renderType == RenderType.cutout()
 				|| renderType == RenderType.cutoutMipped() || renderType == RenderType.translucent()) {
-				int flags = renderType == RenderType.translucent() ? BLENDED : SOLID;
+				int flags = !forceCutout && renderType == RenderType.translucent() ? BLENDED : SOLID;
 				return batch(0, UV_BLOCK_ATLAS, flags);
 			}
 			warnOnce("rendertype:" + renderType, "unsupported untextured render type " + renderType, null);
 			return null;
 		}
-		int flags = renderType.sortOnUpload() || name.contains("translucent") ? BLENDED : SOLID;
+		int flags = !forceCutout && (renderType.sortOnUpload() || name.contains("translucent")) ? BLENDED : SOLID;
 		if (texture.equals(TextureAtlas.LOCATION_BLOCKS)) return batch(0, UV_BLOCK_ATLAS, flags);
 		int id = textureId(texture);
 		return id < 0 ? null : batch(id, UV_RAW, flags);
