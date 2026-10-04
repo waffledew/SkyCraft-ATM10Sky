@@ -28,6 +28,9 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'INSTALL-ATM10SKY.cmd') -Destina
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Install-Client.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'UPDATE-ATM10SKY.cmd') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Update-Client.ps1') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Set-CompatibilityConfig.ps1') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'FIX-TERRAIN-COLLISION.cmd') -Destination $stage
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Fix-Terrain-Collision.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'CHANGE-SERVER-ADDRESS.cmd') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Change-Server-Address.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Prepare-Server.ps1') -Destination $stage

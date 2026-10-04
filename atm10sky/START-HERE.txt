@@ -50,3 +50,8 @@ Your saves, settings, and server address are kept. The updater sets NeoForge
 21.1.250 and installs the matching SkyCraft bridge. The host must also update
 the stopped server. Launch through SKSE, using the generated Prism profile.
 Character sync is included in the SkyCraft jar; no separate download is needed.
+
+MOBS FALLING THROUGH GROUND? Close the server and Minecraft, then run
+FIX-TERRAIN-COLLISION.cmd. Leave its prompt blank for the client; the host runs
+it again with the server folder path. Both sides need the Lithium compatibility
+settings. New installs and UPDATE-ATM10SKY.cmd apply the client fix automatically.

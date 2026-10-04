@@ -90,6 +90,12 @@ Sodium because they replace rendering paths SkyCraft exports into Skyrim.
 Flywheel is set to its compatible `off` backend; Create still works, but its
 animated contraptions are rendered by Minecraft's fallback renderer.
 
+Lithium stays installed, but its movement/intersection collision replacements
+and empty-space collision shortcut are disabled in `config/lithium.properties`.
+Those paths treat Skyrim terrain as empty Minecraft space and bypass SkyCraft's
+collision hook. The settings are required on both client and server; other
+Lithium optimizations remain enabled.
+
 Minecraft's game window is removed from the Windows taskbar and normal Alt-Tab
 list, then parked off-screen during play, so friends interact only with Skyrim.
 It is not minimized or truly hidden because some GPU drivers throttle an OpenGL
@@ -257,6 +263,12 @@ the pack's quests rather than an overpowered handout.
   Java 24. Start it with `START-SKYCRAFT-SERVER.cmd`, which selects Java 21.
 - **Invisible modded entities:** confirm Iris and Sodium remain disabled and
   `config\flywheel-client.toml` contains `backend = "flywheel:off"`.
+- **Mobs fall through Skyrim terrain:** run `FIX-TERRAIN-COLLISION.cmd` while
+  Minecraft and the server are closed. Leave the folder prompt blank to repair
+  this PC's client, then run it again with the server folder path to repair the
+  host's server. Restart both. It backs up the existing Lithium configuration
+  and disables only the three collision options incompatible with streamed
+  Skyrim ground. Terrain still needs an active Skyrim client nearby to supply it.
 - **`Invalid argument: connect` in `sun.nio.ch.PipeImpl`:** this Windows/JDK
   loopback problem is machine-specific. Use another Java 21 distribution first;
   the repository's `gradle-uds-workaround` is an advanced fallback.

@@ -88,6 +88,8 @@ Copy-Item -LiteralPath $e4mcJar.FullName -Destination (Join-Path $mods $e4mcJar.
 
 $config = Join-Path $minecraft 'config'
 New-Item -ItemType Directory -Path $config -Force | Out-Null
+. (Join-Path $packageRoot 'Set-CompatibilityConfig.ps1')
+Set-SkyCraftCompatibilityConfig -ConfigDirectory $config
 Set-Content -LiteralPath (Join-Path $config 'flywheel-client.toml') -Value 'backend = "flywheel:off"'
 if (-not $PSBoundParameters.ContainsKey('ServerAddress')) {
     $ServerAddress = Read-Host 'Server address (host: localhost:25565; friends: the e4mc.link address; leave blank to set later)'

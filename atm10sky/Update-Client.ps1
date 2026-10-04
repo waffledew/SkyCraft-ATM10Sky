@@ -37,6 +37,8 @@ foreach ($group in $incoming) {
 $neoforge[0].version = '21.1.250'
 if ($neoforge[0].PSObject.Properties.Name -contains 'cachedVersion') { $neoforge[0].cachedVersion = '21.1.250' }
 Set-Content -LiteralPath $packPath -Value ($pack | ConvertTo-Json -Depth 20) -Encoding ascii
+. (Join-Path $packageRoot 'Set-CompatibilityConfig.ps1')
+Set-SkyCraftCompatibilityConfig -ConfigDirectory (Join-Path $instance '.minecraft\config')
 Write-Host 'Updated SkyCraft and e4mc; NeoForge is pinned to 21.1.250.' -ForegroundColor Green
 Write-Host "Previous files: $backup"
 Write-Host 'Also install this release''s Vortex patch and update the stopped server. Every player must use the same release.'

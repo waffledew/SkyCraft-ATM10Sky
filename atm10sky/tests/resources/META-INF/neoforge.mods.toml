@@ -1,0 +1,7 @@
+modLoader="lowcodefml"
+loaderVersion="[1,)"
+license="MIT"
+[[mods]]
+modId="skycraft_collision_fixture"
+version="1.0"
+displayName="Isolated SkyCraft collision fixture"

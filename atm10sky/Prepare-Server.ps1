@@ -36,6 +36,8 @@ Copy-Item -LiteralPath $skycraftJar.FullName -Destination (Join-Path $mods $skyc
 Copy-Item -LiteralPath $e4mcJar.FullName -Destination (Join-Path $mods $e4mcJar.Name) -Force
 Copy-Item -LiteralPath (Join-Path $packageRoot 'START-SKYCRAFT-SERVER.cmd') -Destination $Destination -Force
 Copy-Item -LiteralPath (Join-Path $packageRoot 'Write-Server-Address.ps1') -Destination $Destination -Force
+. (Join-Path $packageRoot 'Set-CompatibilityConfig.ps1')
+Set-SkyCraftCompatibilityConfig -ConfigDirectory (Join-Path $Destination 'config')
 
 $propertiesFile = Join-Path $Destination 'server.properties'
 $properties = [System.Collections.Generic.List[string]]::new()
