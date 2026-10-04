@@ -30,6 +30,8 @@ public final class SkyNet {
 	private static final int MAX_ACTORS = 128;
 	private static final List<dev.skycraft.link.SkyLink.Actor> CLIENT_ACTORS = new ArrayList<>();
 	private static int nextActorSyncTick;
+	private static int nextTerrainSyncTick;
+	private static long lastClientWorldTick = Long.MIN_VALUE;
 
 	private SkyNet() {
 	}
@@ -82,6 +84,16 @@ public final class SkyNet {
 		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
 	}
 
+	/** Client -> dedicated server: voxelized Skyrim ground that mobs and items can stand on. */
+	public record TerrainSync(BlockPos center, byte[] data) implements CustomPacketPayload {
+		public static final Type<TerrainSync> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "terrain_sync"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, TerrainSync> CODEC = StreamCodec.of(
+			(buf, p) -> { BlockPos.STREAM_CODEC.encode(buf, p.center); buf.writeByteArray(p.data); },
+			buf -> new TerrainSync(BlockPos.STREAM_CODEC.decode(buf), buf.readByteArray(76 * 4096))
+		);
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
 	/** Client -> server: the player hit Skyrim's geometry in this cell (SkyDig.open). */
 	public record DigOpen(int world, BlockPos pos, int material) implements CustomPacketPayload {
 		public static final Type<DigOpen> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "dig_open"));
@@ -119,7 +131,11 @@ public final class SkyNet {
 	}
 
 	private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-		var registrar = event.registrar("2");
+		var registrar = event.registrar("3");
+		registrar.playToServer(TerrainSync.TYPE, TerrainSync.CODEC, (payload, context) -> {
+			ServerPlayer player = (ServerPlayer) context.player();
+			dev.skycraft.world.SkyCollision.applyRemote(player.getUUID(), payload.center(), 24, 24, payload.data());
+		});
 		registrar.playToServer(ActorSync.TYPE, ActorSync.CODEC, (payload, context) -> {
 			ServerPlayer player = (ServerPlayer) context.player();
 			SkyCombat.syncPlayer(player, decodeActors(payload.data()));
@@ -154,11 +170,21 @@ public final class SkyNet {
 
 	/** Sends the local Skyrim actor table to a remote/dedicated server five times per second. */
 	public static void clientTick(Minecraft minecraft) {
-		if (minecraft.getConnection() == null || minecraft.getSingleplayerServer() != null || minecraft.level == null
-			|| minecraft.level.getGameTime() < nextActorSyncTick) return;
-		nextActorSyncTick = (int) minecraft.level.getGameTime() + 4;
-		if (!dev.skycraft.link.SkyLink.readActors(CLIENT_ACTORS)) return;
-		PacketDistributor.sendToServer(new ActorSync(encodeActors(CLIENT_ACTORS)));
+		if (minecraft.getConnection() == null || minecraft.getSingleplayerServer() != null || minecraft.level == null) {
+			nextActorSyncTick = nextTerrainSyncTick = 0; lastClientWorldTick = Long.MIN_VALUE; return;
+		}
+		long tick = minecraft.level.getGameTime();
+		if (tick < lastClientWorldTick) nextActorSyncTick = nextTerrainSyncTick = 0;
+		lastClientWorldTick = tick;
+		if (tick >= nextActorSyncTick) {
+			nextActorSyncTick = (int) tick + 4;
+			if (dev.skycraft.link.SkyLink.readActors(CLIENT_ACTORS)) PacketDistributor.sendToServer(new ActorSync(encodeActors(CLIENT_ACTORS)));
+		}
+		if (tick >= nextTerrainSyncTick && minecraft.player != null && dev.skycraft.world.SkyCollision.active()) {
+			nextTerrainSyncTick = (int) tick + 40;
+			BlockPos center = minecraft.player.blockPosition();
+			PacketDistributor.sendToServer(new TerrainSync(center, dev.skycraft.world.SkyCollision.snapshotAround(center, 24, 24, 4096)));
+		}
 	}
 
 	private static byte[] encodeActors(List<dev.skycraft.link.SkyLink.Actor> actors) {

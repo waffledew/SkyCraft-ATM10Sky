@@ -29,14 +29,20 @@ public final class SkyCraft {
 		SkyCombat.init(modBus);
 		dev.skycraft.net.SkyNet.init(modBus);
 		dev.skycraft.world.SkyDig.init(modBus);
+		dev.skycraft.world.SkyMobSpawner.init();
 		NeoForge.EVENT_BUS.addListener(SkyCraft::configureServer);
 		NeoForge.EVENT_BUS.addListener(SkyCraft::playerJoined);
+		NeoForge.EVENT_BUS.addListener(SkyCraft::playerLeft);
 		// Dedicated servers need SkyCraft's packet handlers and common gameplay code, but must
 		// never resolve Minecraft client classes. Keep all client initialization behind the
 		// physical-dist check so the same jar can be installed on both sides of multiplayer.
 		if (FMLEnvironment.dist == Dist.CLIENT) {
 			dev.skycraft.client.SkyCraftClient.init(modBus);
 		}
+	}
+
+	private static void playerLeft(PlayerEvent.PlayerLoggedOutEvent event) {
+		dev.skycraft.world.SkyCollision.removeRemote(event.getEntity().getUUID());
 	}
 
 	private static void playerJoined(PlayerEvent.PlayerLoggedInEvent event) {
@@ -52,7 +58,7 @@ public final class SkyCraft {
 		GameRules rules = server.getGameRules();
 		rules.getRule(GameRules.RULE_DAYLIGHT).set(false, server);
 		rules.getRule(GameRules.RULE_WEATHER_CYCLE).set(false, server);
-		rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, server);
+		rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(true, server);
 		rules.getRule(GameRules.RULE_DOINSOMNIA).set(false, server);
 		rules.getRule(GameRules.RULE_DO_PATROL_SPAWNING).set(false, server);
 		rules.getRule(GameRules.RULE_DO_TRADER_SPAWNING).set(false, server);

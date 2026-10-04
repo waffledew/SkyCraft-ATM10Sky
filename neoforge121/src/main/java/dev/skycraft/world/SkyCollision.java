@@ -8,6 +8,7 @@ import dev.skycraft.link.SkyLink;
 import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.lang.foreign.MemorySegment;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -30,6 +31,9 @@ public final class SkyCollision {
 	private static final ConcurrentHashMap<Long, VoxelShape> SHAPES = new ConcurrentHashMap<>();
 	// Per block: sub-voxel count (bits 0-9), any in the lower half (bit 10), any in the upper half (bit 11).
 	private static final ConcurrentHashMap<Long, Integer> FILL = new ConcurrentHashMap<>();
+	/** Original 8x8x8 occupancy, retained so a multiplayer client can mirror collision to its server. */
+	private static final ConcurrentHashMap<Long, long[]> BITS = new ConcurrentHashMap<>();
+	private static final ConcurrentHashMap<UUID, java.util.Map<Long, long[]>> REMOTE = new ConcurrentHashMap<>();
 	private static final int FILL_LOWER = 1 << 10;
 	private static final int FILL_UPPER = 1 << 11;
 	private static final int FILL_TOP_SHIFT = 12; // highest occupied of the 8 voxel layers (3 bits)
@@ -166,6 +170,68 @@ public final class SkyCollision {
 		return fill == null ? 0.0F : (((fill >> FILL_TOP_SHIFT) & 7) + 1) / 8.0F;
 	}
 
+	/** Highest Skyrim surface in this column, or NaN when no synchronized ground is nearby. */
+	public static double surfaceY(int x, int z, int minY, int maxY) {
+		for (int y = maxY; y >= minY; y--) {
+			Integer fill = FILL.get(BlockPos.asLong(x, y, z));
+			if (fill != null) return y + (((fill >> FILL_TOP_SHIFT) & 7) + 1) / 8.0;
+		}
+		return Double.NaN;
+	}
+
+	/** Compact full collision snapshot around the local player: xyz plus eight 64-bit voxel layers. */
+	public static byte[] snapshotAround(BlockPos center, int horizontal, int vertical, int limit) {
+		java.util.ArrayList<java.util.Map.Entry<Long, long[]>> found = new java.util.ArrayList<>();
+		for (var entry : BITS.entrySet()) {
+			BlockPos pos = BlockPos.of(entry.getKey());
+			if (Math.abs(pos.getX() - center.getX()) <= horizontal && Math.abs(pos.getY() - center.getY()) <= vertical
+				&& Math.abs(pos.getZ() - center.getZ()) <= horizontal) {
+				found.add(entry);
+				if (found.size() >= limit) break;
+			}
+		}
+		java.nio.ByteBuffer out = java.nio.ByteBuffer.allocate(found.size() * 76).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+		for (var entry : found) {
+			BlockPos pos = BlockPos.of(entry.getKey());
+			out.putInt(pos.getX()).putInt(pos.getY()).putInt(pos.getZ());
+			for (long layer : entry.getValue()) out.putLong(layer);
+		}
+		return out.array();
+	}
+
+	/** Applies one client's collision window on a dedicated server while retaining its recent trail. */
+	public static synchronized void applyRemote(UUID owner, BlockPos center, int horizontal, int vertical, byte[] data) {
+		java.util.Map<Long, long[]> old = REMOTE.computeIfAbsent(owner, ignored -> new java.util.HashMap<>());
+		java.util.HashSet<Long> affected = new java.util.HashSet<>();
+		for (var it = old.entrySet().iterator(); it.hasNext();) {
+			var entry = it.next(); BlockPos pos = BlockPos.of(entry.getKey());
+			if (Math.abs(pos.getX()-center.getX()) <= horizontal && Math.abs(pos.getY()-center.getY()) <= vertical
+				&& Math.abs(pos.getZ()-center.getZ()) <= horizontal) { affected.add(entry.getKey()); it.remove(); }
+		}
+		java.nio.ByteBuffer in = java.nio.ByteBuffer.wrap(data).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+		while (in.remaining() >= 76) {
+			int x=in.getInt(), y=in.getInt(), z=in.getInt(); long[] layers=new long[8]; for(int i=0;i<8;i++) layers[i]=in.getLong();
+			long key=BlockPos.asLong(x,y,z); old.put(key,layers); affected.add(key);
+			KNOWN_REGIONS.add(regionKey(Math.floorDiv(x, REGION_SIZE), Math.floorDiv(y, REGION_SIZE), Math.floorDiv(z, REGION_SIZE)));
+		}
+		// Bound each player's retained trail. Oldest spatial data is expendable once nobody is near it.
+		if (old.size() > 32768) {
+			var it=old.keySet().iterator(); while(old.size()>24576 && it.hasNext()) { long key=it.next(); affected.add(key); it.remove(); }
+		}
+		for (long key : affected) rebuildRemoteCell(key);
+	}
+
+	public static synchronized void removeRemote(UUID owner) {
+		java.util.Map<Long,long[]> removed=REMOTE.remove(owner); if(removed!=null) for(long key:removed.keySet()) rebuildRemoteCell(key);
+	}
+
+	private static void rebuildRemoteCell(long key) {
+		long[] layers=null; for(var map:REMOTE.values()) { layers=map.get(key); if(layers!=null) break; }
+		if(layers==null) { SHAPES.remove(key); FILL.remove(key); BITS.remove(key); return; }
+		VoxelShape shape=buildShape(layers); if(shape==null) { SHAPES.remove(key); FILL.remove(key); BITS.remove(key); }
+		else { SHAPES.put(key,shape); FILL.put(key,fillInfo(layers)); BITS.put(key,layers); }
+	}
+
 	/** True if Skyrim ground holds up whatever is in this cell (terrain in its lower half or the top of the cell below). */
 	public static boolean supportsFromBelow(BlockPos pos) {
 		if (FILL.isEmpty()) {
@@ -272,6 +338,7 @@ public final class SkyCollision {
 	private static void clear(int newEpoch) {
 		SHAPES.clear();
 		FILL.clear();
+		BITS.clear();
 		TRIS.clear();
 		GHOSTS.clear();
 		TRI_HASH.clear();
@@ -307,6 +374,7 @@ public final class SkyCollision {
 				long key = BlockPos.asLong(x, y, z);
 				fresh.put(key, shape);
 				freshFill.put(key, fillInfo(s, e + 16));
+				long[] layers = new long[8]; for (int layer=0;layer<8;layer++) layers[layer]=s.get(JAVA_LONG,e+16+layer*8L); BITS.put(key,layers);
 			}
 		}
 
@@ -321,6 +389,7 @@ public final class SkyCollision {
 					} else {
 						SHAPES.remove(key);
 						FILL.remove(key);
+						BITS.remove(key);
 					}
 				}
 			}
@@ -404,6 +473,12 @@ public final class SkyCollision {
 		return info | count | top << FILL_TOP_SHIFT;
 	}
 
+	private static int fillInfo(long[] layers) {
+		int count=0, info=0, top=0;
+		for(int y=0;y<8;y++){long layer=layers[y];count+=Long.bitCount(layer);if(layer!=0){info|=y<4?FILL_LOWER:FILL_UPPER;top=y;}}
+		return info|count|top<<FILL_TOP_SHIFT;
+	}
+
 	private static @Nullable VoxelShape buildShape(MemorySegment s, long bitsOff) {
 		boolean any = false;
 		boolean full = true;
@@ -430,6 +505,13 @@ public final class SkyCollision {
 				voxels.fill(x, y, z);
 			}
 		}
+		return new UniformVoxelShape(voxels);
+	}
+
+	private static @Nullable VoxelShape buildShape(long[] layers) {
+		boolean any=false, full=true; for(long layer:layers){any|=layer!=0;full&=layer==-1L;} if(!any)return null;if(full)return Shapes.block();
+		BitSetDiscreteVoxelShape voxels=new BitSetDiscreteVoxelShape(8,8,8);
+		for(int y=0;y<8;y++){long layer=layers[y];while(layer!=0){int bit=Long.numberOfTrailingZeros(layer);layer&=layer-1;voxels.fill(bit&7,y,bit>>>3);}}
 		return new UniformVoxelShape(voxels);
 	}
 

@@ -17,7 +17,8 @@
     "ProjectileUtilMixin",
     "ServerExplosionMixin",
     "ServerPlayerMixin",
-    "SmithingMixin"
+    "SmithingMixin",
+    "WalkNodeEvaluatorMixin"
   ],
   "injectors": { "defaultRequire": 1 }
 }
