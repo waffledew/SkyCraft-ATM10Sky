@@ -8,6 +8,7 @@ import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.EntityCollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -39,8 +40,14 @@ public abstract class BlockCollisionsMixin {
 				blockShape = blockShape.isEmpty() ? wall : Shapes.or(blockShape, wall);
 			}
 		}
-		if (context instanceof EntityCollisionContext entityContext && SkyCollision.usesSmoothCollider(entityContext.getEntity())) {
-			return blockShape; // this entity collides with Skyrim's exact triangles instead (SkyCollider)
+		if (context instanceof EntityCollisionContext entityContext) {
+			// The local player already uses the exact-triangle SkyCollider. On a dedicated server,
+			// applying this coarser mirrored voxel copy to ServerPlayer as well makes the two sides
+			// disagree about the floor and causes rubber-banding/sticking. Mirrored voxels are for
+			// mobs and other server-simulated entities, not players.
+			if (entityContext.getEntity() instanceof Player || SkyCollision.usesSmoothCollider(entityContext.getEntity())) {
+				return blockShape;
+			}
 		}
 		VoxelShape sky = SkyCollision.shapeAt(pos);
 		if (sky == null) {

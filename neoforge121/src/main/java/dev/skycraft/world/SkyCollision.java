@@ -187,11 +187,20 @@ public final class SkyCollision {
 			if (Math.abs(pos.getX() - center.getX()) <= horizontal && Math.abs(pos.getY() - center.getY()) <= vertical
 				&& Math.abs(pos.getZ() - center.getZ()) <= horizontal) {
 				found.add(entry);
-				if (found.size() >= limit) break;
 			}
 		}
-		java.nio.ByteBuffer out = java.nio.ByteBuffer.allocate(found.size() * 76).order(java.nio.ByteOrder.LITTLE_ENDIAN);
-		for (var entry : found) {
+		// ConcurrentHashMap iteration is deliberately unordered. Taking its first `limit` entries
+		// randomly omitted the ground directly below nearby mobs, then the server deleted those old
+		// cells while applying the next snapshot. Always keep the cells nearest the player first.
+		found.sort(java.util.Comparator.comparingLong(entry -> {
+			BlockPos pos = BlockPos.of(entry.getKey());
+			long dx = pos.getX() - center.getX(), dy = pos.getY() - center.getY(), dz = pos.getZ() - center.getZ();
+			return dx * dx + dz * dz + dy * dy * 2L;
+		}));
+		int count = Math.min(found.size(), limit);
+		java.nio.ByteBuffer out = java.nio.ByteBuffer.allocate(count * 76).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+		for (int i = 0; i < count; i++) {
+			var entry = found.get(i);
 			BlockPos pos = BlockPos.of(entry.getKey());
 			out.putInt(pos.getX()).putInt(pos.getY()).putInt(pos.getZ());
 			for (long layer : entry.getValue()) out.putLong(layer);

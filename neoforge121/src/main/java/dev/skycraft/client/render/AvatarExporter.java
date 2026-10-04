@@ -126,7 +126,8 @@ final class AvatarExporter implements MultiBufferSource {
 
 		int entityCount = 0;
 		for (Entity entity : level.entitiesForRendering()) {
-			if (entity == minecraft.player || entity instanceof ItemEntity || entity instanceof AbstractArrow
+			if ((entity == minecraft.player && minecraft.options.getCameraType().isFirstPerson())
+				|| entity instanceof ItemEntity || entity instanceof AbstractArrow
 				|| entity instanceof ItemSupplier || entity instanceof SkyrimActorEntity
 				|| entity.distanceToSqr(cam) > SCENE_RANGE * SCENE_RANGE || entityCount >= MAX_ENTITIES) continue;
 			entityCount++;
