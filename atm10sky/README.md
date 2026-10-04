@@ -229,6 +229,10 @@ the pack's quests rather than an overpowered handout.
 - **Friend cannot connect after a restart:** e4mc usually assigned a new name.
   Send the new `SERVER-ADDRESS.txt`; the friend must run
   `CHANGE-SERVER-ADDRESS.cmd` while Skyrim is closed.
+- **Friend sees "connecting too fast":** fully close Skyrim, Prism, and Minecraft,
+  wait 60 seconds, then run `CHANGE-SERVER-ADDRESS.cmd` with the host's newest
+  address and launch SKSE once. Current clients automatically back off failed
+  remote connections (15, 30, then 60 seconds) instead of hammering e4mc.
 - **Host sees one failed localhost connection with the server off:** this is
   expected. SkyCraft then opens the host's local mirror world instead of retrying
   forever. Start the dedicated server before SKSE when shared progress is wanted.

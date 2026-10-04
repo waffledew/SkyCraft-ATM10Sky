@@ -25,6 +25,8 @@ public final class MirrorWorld {
 	private static boolean skipConfiguredLocal;
 	private static @org.jspecify.annotations.Nullable String attemptedJoin;
 	private static boolean attemptedConfiguredJoin;
+	private static long configuredRetryAt;
+	private static int configuredFailures;
 	// /join: a friend's world for this session (the e4mc link their "Open to LAN" shows); null: our own.
 	private static @org.jspecify.annotations.Nullable String sessionJoin;
 	// Shown in chat once the player is in a world again (why they're back in their own, ...).
@@ -102,6 +104,10 @@ public final class MirrorWorld {
 
 	/** Every client tick: a note for the player once they're in a world again. */
 	public static void tick(Minecraft minecraft) {
+		if (minecraft.player != null) {
+			configuredRetryAt = 0;
+			configuredFailures = 0;
+		}
 		if (pendingNote != null && minecraft.player != null) {
 			minecraft.gui.getChat().addMessage(net.minecraft.network.chat.Component.literal(pendingNote));
 			pendingNote = null;
@@ -112,10 +118,17 @@ public final class MirrorWorld {
 		// Couldn't reach a friend's world, or it closed under us: back to our own, and say why.
 		if (minecraft.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen && minecraft.level == null) {
 			boolean localServerUnavailable = attemptedConfiguredJoin && isLocalAddress(attemptedJoin);
+			boolean configuredRemoteUnavailable = attemptedConfiguredJoin && !localServerUnavailable;
 			if (localServerUnavailable) {
 				skipConfiguredLocal = true;
 				pendingNote = "The local dedicated server isn't running. You're using your own SkyCraft world.";
 				SkyCraft.LOG.info("SkyCraft: local server unavailable; opening the local mirror world instead");
+			} else if (configuredRemoteUnavailable) {
+				configuredFailures++;
+				long delaySeconds = Math.min(60L, 15L << Math.min(configuredFailures - 1, 2));
+				configuredRetryAt = System.currentTimeMillis() + delaySeconds * 1000L;
+				SkyCraft.LOG.warn("SkyCraft: connection to {} failed; retrying in {} seconds (attempt {})",
+					attemptedJoin, delaySeconds, configuredFailures + 1);
 			} else {
 				pendingNote = sessionJoin != null
 					? "Couldn't stay in " + sessionJoin + " (check the link, and that your friend's world is still open to LAN). You're back in your own world."
@@ -134,6 +147,9 @@ public final class MirrorWorld {
 			SkyCraft.LOG.info("SkyCraft: still not in the mirror world; current screen {}", minecraft.screen.getClass().getName());
 		}
 		if (attempted || minecraft.level != null || minecraft.getOverlay() != null) {
+			return;
+		}
+		if (System.currentTimeMillis() < configuredRetryAt) {
 			return;
 		}
 		// Wait for the menu to settle on the title screen; skip any first-launch prompts in front of it.
