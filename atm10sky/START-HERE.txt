@@ -1,6 +1,12 @@
 SKYCRAFT ATM10SKY - FRIEND SETUP
 ================================
 
+PACKAGE VERSION: SkyCraft 0.1.2-atm10sky.21 (ATM10 To the Sky pack 2.0.6)
+Already installed? Close both games and run UPDATE-ATM10SKY.cmd here.
+New installation? Follow the installation steps below.
+The Minecraft bridge must become skycraft-0.1.2-atm10sky.21.jar.
+Installing the Vortex patch alone does NOT update the Minecraft bridge.
+
 FRIEND-TEST PRERELEASE: bridge .21 / protocol 6. Everyone must use this same
 release, including the host server. Do NOT use the older .16 package.
 Tested Skyrim runtime: 1.7.104.0. Other runtimes and remote joining still need

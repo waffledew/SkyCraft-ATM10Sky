@@ -40,6 +40,8 @@ Set-Content -LiteralPath $packPath -Value ($pack | ConvertTo-Json -Depth 20) -En
 . (Join-Path $packageRoot 'Set-CompatibilityConfig.ps1')
 Set-SkyCraftCompatibilityConfig -ConfigDirectory (Join-Path $instance '.minecraft\config')
 Write-Host 'Updated SkyCraft and e4mc; NeoForge is pinned to 21.1.250.' -ForegroundColor Green
+Write-Host "Installed Minecraft bridge: $($incoming[0][0].Name)" -ForegroundColor Green
+Write-Host "Updated mods folder: $mods"
 Write-Host "Previous files: $backup"
 Write-Host 'Also install this release''s Vortex patch and update the stopped server. Every player must use the same release.'
 Write-Host 'Start Skyrim through SKSE to use the generated profile.'

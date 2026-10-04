@@ -19,7 +19,9 @@ foreach ($path in @($jar.FullName, $dll, $E4mcJar)) {
 }
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
-$stage = Join-Path $OutputDirectory 'SkyCraft-ATM10Sky-2.0.6'
+$releaseVersion = $jar.BaseName -replace '^skycraft-', ''
+$packageName = "SkyCraft-ATM10Sky-$releaseVersion-pack-2.0.6"
+$stage = Join-Path $OutputDirectory $packageName
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Path (Join-Path $stage 'files') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination $stage
@@ -60,7 +62,7 @@ $vortexZip = Join-Path $stage 'SkyCraft-ATM10Sky-Vortex-Patch.zip'
 Compress-Archive -Path (Join-Path $vortex '*') -DestinationPath $vortexZip -CompressionLevel Optimal -Force
 Remove-Item -LiteralPath $vortex -Recurse -Force
 
-$releaseZip = Join-Path $OutputDirectory 'SkyCraft-ATM10Sky-2.0.6.zip'
+$releaseZip = Join-Path $OutputDirectory ($packageName + '.zip')
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $releaseZip -CompressionLevel Optimal -Force
 
 Get-FileHash -LiteralPath $releaseZip,$vortexZip -Algorithm SHA256 | Select-Object Path,Hash
