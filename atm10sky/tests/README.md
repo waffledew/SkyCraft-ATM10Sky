@@ -1,5 +1,21 @@
 # Streamed terrain collision regression check
 
+## Friend package installation check
+
+`Test-Friend-Package.ps1` takes a staged package, the official CurseForge 2.0.6
+instance, portable Prism executable, official 2.0.6 server ZIP, and a new test
+directory. It imports the stock pack into an isolated profile, verifies each
+retained stock jar's hash, exercises repeat client/server updates and optional
+pipe repairs, checks address/world preservation and terrain configuration, and
+runs the agent on Java 21. It does not start Minecraft, sign in, or certify a
+remote Skyrim session. It needs an installed Java 21 JDK for the agent check.
+
+`RespawnStateTest.java` checks saved spawn round trips, streamed-surface support,
+bed/fallback selection, and all three respawn/area/readiness packet codecs. It
+is a standalone Java 21 check against the Gradle-generated Minecraft classpath.
+
+## Collision physics check
+
 Use only a disposable, loopback-only ATM10Sky test server with no players. This
 probe adds temporary forced chunks and a cow, then stops the server after 100
 ticks. It is deliberately excluded from release packages.

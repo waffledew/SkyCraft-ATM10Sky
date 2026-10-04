@@ -15,8 +15,13 @@ has their own Skyrim world, NPCs, quests, and save file.
 
 ## Download
 
-Use the newest package on the
-[Releases page](https://github.com/waffledew/SkyCraft-ATM10Sky/releases).
+The matching friend-test prerelease is **v0.1.2-atm10sky.21**, protocol 6.
+All clients and the host server must use the same release. The older .16 stable
+package does not connect to a .21 server. Skyrim runtime 1.7.104.0 was tested
+locally; other runtimes and external-network joining still need verification.
+
+Use the [.21 friend-test prerelease](https://github.com/waffledew/SkyCraft-ATM10Sky/releases/tag/v0.1.2-atm10sky.21).
+The older stable release shown by GitHub's Latest button is not a match for .21.
 The ZIP contains a double-click friend installer, a double-click server-address
 changer, a friendly host server launcher, a short `START-HERE.txt`, the
 Vortex patch, server preparation script, licenses, and a detailed setup guide.

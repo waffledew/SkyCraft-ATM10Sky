@@ -36,6 +36,12 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Change-Server-Address.ps1') -De
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Prepare-Server.ps1') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'START-SKYCRAFT-SERVER.cmd') -Destination $stage
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Write-Server-Address.ps1') -Destination $stage
+foreach ($name in @('UPDATE-SKYCRAFT-SERVER.cmd','Update-Server.ps1','ENABLE-WINDOWS-PIPE-FIX.cmd','Enable-Windows-Pipe-Fix.ps1')) {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $stage
+}
+$agent = Join-Path $root 'neoforge121\build\support\disable-uds-agent.jar'
+if (-not (Test-Path -LiteralPath $agent)) { throw 'Build the optional agent from atm10sky/DisableUnixDomainSocketsAgent.java first.' }
+Copy-Item -LiteralPath $agent -Destination (Join-Path $stage 'files\disable-uds-agent.jar')
 Copy-Item -LiteralPath $jar.FullName -Destination (Join-Path $stage ('files\' + $jar.Name))
 Copy-Item -LiteralPath $E4mcJar -Destination (Join-Path $stage 'files\e4mc-neoforge-6.1.1.jar')
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination (Join-Path $stage 'LICENSE-SkyCraft.txt')

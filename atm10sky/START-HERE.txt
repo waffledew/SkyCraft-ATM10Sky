@@ -1,6 +1,11 @@
 SKYCRAFT ATM10SKY - FRIEND SETUP
 ================================
 
+FRIEND-TEST PRERELEASE: bridge .21 / protocol 6. Everyone must use this same
+release, including the host server. Do NOT use the older .16 package.
+Tested Skyrim runtime: 1.7.104.0. Other runtimes and remote joining still need
+verification. Back up your Skyrim save before testing. Minecraft needs Java 21.
+
 Minecraft stays hidden during normal gameplay. Skyrim is the game window you use.
 Prism may appear only for the first Microsoft sign-in or when an error needs attention.
 
@@ -55,3 +60,16 @@ MOBS FALLING THROUGH GROUND? Close the server and Minecraft, then run
 FIX-TERRAIN-COLLISION.cmd. Leave its prompt blank for the client; the host runs
 it again with the server folder path. Both sides need the Lithium compatibility
 settings. New installs and UPDATE-ATM10SKY.cmd apply the client fix automatically.
+
+HOST UPDATES: Stop the server, then run UPDATE-SKYCRAFT-SERVER.cmd from the new
+release and enter your existing server folder. It keeps the world, players,
+quests, admin access, and server settings; old jars are backed up.
+
+JAVA PIPE ERROR: Only if you get "Invalid argument: connect" in PipeImpl, run
+ENABLE-WINDOWS-PIPE-FIX.cmd with games/server closed. It is optional and uses
+paths for your own PC. Leave its prompt blank for the client or enter the server
+folder for the host server.
+
+FIRST MULTIPLAYER TEST: Start with everyone in the same Skyrim location/cell.
+Each player uses their own Minecraft Java account. Joining the Minecraft server
+shares Minecraft progress, not Skyrim NPCs, quest decisions, or save files.

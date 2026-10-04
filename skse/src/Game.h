@@ -49,6 +49,7 @@ namespace skycraft
 	{
 		void Install();
 		void OnGameLoaded();
+		void RequestRespawn(const proto::McEvent& a_event);
 		// Present keeps running while Skyrim is at its main menu. Show an honest, stage-based
 		// Minecraft startup percentage there so the player knows when it is safe to load a save.
 		void UpdateMainMenuLoading();

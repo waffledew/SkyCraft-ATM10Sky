@@ -402,14 +402,10 @@ namespace skycraft
 			if (a_player->IsDead()) {
 				return;
 			}
-			logger::info("Minecraft player died (killer {:08X}); killing the Skyrim player", a_ev.formId);
-			SetEssential(a_player, false);
-			auto* killer = a_ev.formId ? RE::TESForm::LookupByID<RE::Actor>(a_ev.formId) : nullptr;
-			const float health = a_player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kHealth);
-			a_player->KillImpl(killer, health + 1.0f, true, false);
-			if (!a_player->IsDead()) {
-				a_player->KillImmediate();
-			}
+			logger::info("Minecraft player died (killer {:08X}); waiting for Minecraft respawn without reloading Skyrim", a_ev.formId);
+			SetEssential(a_player, true);
+			healthPrimed = false;
+			dot = {};
 		}
 
 		bool AnyoneFighting(RE::PlayerCharacter* a_player)
@@ -849,7 +845,7 @@ namespace skycraft
 		{
 			auto& link = Link::Get();
 			if (!a_puppeting) {
-				if (essentialSet) {
+				if (essentialSet && !State().mcInWorld) {
 					SetEssential(a_player, false);
 				}
 				healthPrimed = false;
@@ -860,6 +856,7 @@ namespace skycraft
 					if (ev.type == proto::kEvPlayerDied && link.McAlive()) {
 						KillPlayer(a_player, ev);
 					}
+					if (ev.type == proto::kEvRespawn && link.McAlive()) Game::RequestRespawn(ev);
 				}
 				pendingExplosions.clear();
 				pendingFlings.clear();
@@ -884,6 +881,9 @@ namespace skycraft
 					break;
 				case proto::kEvPlayerDied:
 					KillPlayer(a_player, ev);
+					break;
+				case proto::kEvRespawn:
+					Game::RequestRespawn(ev);
 					break;
 				case proto::kEvExplosion:
 					pendingExplosions.push_back({ McToSky(ev.a, ev.b, ev.c), ev.d, 0.25f });

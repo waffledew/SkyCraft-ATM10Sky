@@ -80,6 +80,9 @@ final class AvatarExporter implements MultiBufferSource {
 	private final Map<Long, Batch> batches = new HashMap<>();
 	private final Map<RenderType, Batch> renderTypeBatches = new IdentityHashMap<>();
 	private final Set<String> warned = new HashSet<>();
+	private final Set<Integer> capturedItems = new HashSet<>();
+	private final Set<Integer> publishedItems = new HashSet<>();
+	static boolean hasCapturedItem(int id) { return SCENE.publishedItems.contains(id); }
 	private final Capture capture = new Capture();
 	private final List<BlockEntity> nearbyBlockEntities = new ArrayList<>();
 	private SkyAtlas atlas;
@@ -102,6 +105,8 @@ final class AvatarExporter implements MultiBufferSource {
 		nextTextureId = 1;
 		SCENE.renderTypeBatches.clear();
 		SCENE.warned.clear();
+		SCENE.capturedItems.clear();
+		SCENE.publishedItems.clear();
 		SCENE.shown = false;
 		SCENE.nextSceneNanos = 0;
 		SCENE.nextBlockEntityScanNanos = 0;
@@ -120,6 +125,7 @@ final class AvatarExporter implements MultiBufferSource {
 		ClientLevel level = minecraft.level;
 		if (level == null || minecraft.player == null) return;
 		this.atlas = atlas;
+		this.capturedItems.clear();
 		for (Batch b : this.batches.values()) b.count = 0;
 		Camera camera = minecraft.gameRenderer.getMainCamera();
 		Vec3 cam = camera.getPosition();
@@ -129,7 +135,7 @@ final class AvatarExporter implements MultiBufferSource {
 		int entityCount = 0;
 		for (Entity entity : level.entitiesForRendering()) {
 			if ((entity == minecraft.player && minecraft.options.getCameraType().isFirstPerson())
-				|| entity instanceof ItemEntity || entity instanceof AbstractArrow
+				|| entity instanceof AbstractArrow
 				|| entity instanceof ItemSupplier || entity instanceof SkyrimActorEntity
 				|| entity.distanceToSqr(cam) > SCENE_RANGE * SCENE_RANGE || entityCount >= MAX_ENTITIES) continue;
 			entityCount++;
@@ -146,6 +152,7 @@ final class AvatarExporter implements MultiBufferSource {
 					minecraft.getEntityRenderDispatcher().render(entity, x, y, z, entity.getYRot(), partialTick, pose, this, light);
 				}
 				this.capture.flush();
+				if (entity instanceof ItemEntity && capturedVertices() > verticesBefore) this.capturedItems.add(entity.getId());
 				if (entity instanceof PrimedTnt && capturedVertices() == verticesBefore) {
 					warnOnce("empty-primed-tnt", "primed TNT renderer emitted no compatible geometry", null);
 				}
@@ -314,7 +321,9 @@ final class AvatarExporter implements MultiBufferSource {
 		// body as blended skips depth writes, letting the rear of the head and torso show through the
 		// front. Export player pixels as alpha-cutout instead: opaque skin writes depth and genuinely
 		// transparent overlay pixels are discarded.
-		boolean playerCutout = this.activeEntity instanceof Player;
+		// ItemEntityRenderer also selects a translucent entity layer for ordinary opaque
+		// item models. Like player skins, these need depth writes to hide rear surfaces.
+		boolean playerCutout = this.activeEntity instanceof Player || this.activeEntity instanceof ItemEntity;
 		Batch b = playerCutout ? null : this.renderTypeBatches.get(renderType);
 		if (b == null && (playerCutout || !this.renderTypeBatches.containsKey(renderType))) {
 			b = makeBatch(renderType, playerCutout);
@@ -394,6 +403,7 @@ final class AvatarExporter implements MultiBufferSource {
 				h.putDouble(origin[0]).putDouble(origin[1]).putDouble(origin[2]).putInt(0).putInt(0).flip();
 				shown = !SkyLink.writeRender(Proto.REN_SCENE, h, null);
 			}
+			if (!shown) publishedItems.clear();
 			return;
 		}
 		ByteBuffer header = ByteBuffer.allocate(32 + used.size() * 16).order(ByteOrder.LITTLE_ENDIAN);
@@ -408,7 +418,11 @@ final class AvatarExporter implements MultiBufferSource {
 		}
 		header.flip();
 		body.flip();
-		if (SkyLink.tryWriteRender(Proto.REN_SCENE, header, body)) shown = true;
+		if (SkyLink.tryWriteRender(Proto.REN_SCENE, header, body)) {
+			shown = true;
+			publishedItems.clear();
+			publishedItems.addAll(capturedItems);
+		}
 	}
 
 	private final class Batch {

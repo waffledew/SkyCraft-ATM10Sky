@@ -32,6 +32,7 @@ namespace skycraft
 		}();
 		float          holdMismatch = 0.0f;  // seconds Minecraft has been waiting away from Skyrim's player
 		bool           teleportPending = true;
+		std::optional<proto::McEvent> pendingRespawn;
 		std::uint32_t  worldId = 0;
 		std::uint32_t  epoch = 0;
 		RE::NiPoint3   lastSetPos{};
@@ -541,6 +542,28 @@ namespace skycraft
 				teleportPending = true;
 			}
 			mcWasAlive = mcAlive;
+			if (pendingRespawn && mcAlive) {
+				const auto target = *pendingRespawn;
+				pendingRespawn.reset();
+				auto* form = RE::TESForm::LookupByID(target.formId);
+				auto* world = form ? form->As<RE::TESWorldSpace>() : nullptr;
+				auto* targetCell = world ? world->persistentCell : (form ? form->As<RE::TESObjectCELL>() : nullptr);
+				if (targetCell && std::isfinite(target.a) && std::isfinite(target.b) && std::isfinite(target.c)) {
+					const auto position = McToSky(target.a, target.b, target.c);
+					const RE::NiPoint3 rotation{ 0.0f, 0.0f, McYawToHeading(target.d) };
+					using MoveFn = void(RE::TESObjectREFR*, const RE::ObjectRefHandle&, RE::TESObjectCELL*, RE::TESWorldSpace*, const RE::NiPoint3&, const RE::NiPoint3&);
+					REL::Relocation<MoveFn> move{ RELOCATION_ID(56227, 56626) };
+					move(a_player, RE::ObjectRefHandle{}, targetCell, world, position, rotation);
+					teleportPending = true;
+					haveLastSet = false;
+					++epoch;
+					Collision::Get().Reset(epoch);
+					settleTimer = kSettleSeconds;
+					logger::info("Respawning in Skyrim area {:08X}", target.formId);
+				} else {
+					logger::error("Cannot resolve respawn area {:08X}; keeping player held", target.formId);
+				}
+			}
 			st.mcInWorld = haveMc && (mc.flags & proto::kMcInWorld);
 			const bool screenOpen = haveMc && (mc.flags & proto::kMcScreenOpen);
 			if (screenOpen && !st.mcScreenOpen) {
@@ -1139,6 +1162,7 @@ namespace skycraft
 
 	namespace Game
 	{
+		void RequestRespawn(const proto::McEvent& a_event) { pendingRespawn = a_event; }
 		void UpdateMainMenuLoading()
 		{
 			// Process enumeration and Scaleform updates do not need to happen at Skyrim's frame rate.

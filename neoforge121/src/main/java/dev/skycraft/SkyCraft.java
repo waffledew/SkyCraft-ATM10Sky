@@ -30,6 +30,7 @@ public final class SkyCraft {
 		dev.skycraft.net.SkyNet.init(modBus);
 		dev.skycraft.world.SkyDig.init(modBus);
 		dev.skycraft.world.SkyMobSpawner.init();
+		dev.skycraft.world.SkyRespawn.init();
 		NeoForge.EVENT_BUS.addListener(SkyCraft::configureServer);
 		NeoForge.EVENT_BUS.addListener(SkyCraft::playerJoined);
 		NeoForge.EVENT_BUS.addListener(SkyCraft::playerLeft);
@@ -49,7 +50,6 @@ public final class SkyCraft {
 	private static void playerJoined(PlayerEvent.PlayerLoggedInEvent event) {
 		if (event.getEntity() instanceof ServerPlayer player) {
 			giveStarterKit(player);
-			dressTestGuest(player);
 		}
 	}
 
@@ -64,8 +64,8 @@ public final class SkyCraft {
 		rules.getRule(GameRules.RULE_DO_PATROL_SPAWNING).set(false, server);
 		rules.getRule(GameRules.RULE_DO_TRADER_SPAWNING).set(false, server);
 		rules.getRule(GameRules.RULE_DISABLE_ELYTRA_MOVEMENT_CHECK).set(true, server);
-		rules.getRule(GameRules.RULE_KEEPINVENTORY).set(true, server);
-		rules.getRule(GameRules.RULE_DO_IMMEDIATE_RESPAWN).set(true, server);
+		rules.getRule(GameRules.RULE_KEEPINVENTORY).set(false, server);
+		rules.getRule(GameRules.RULE_DO_IMMEDIATE_RESPAWN).set(false, server);
 		rules.getRule(GameRules.RULE_ANNOUNCE_ADVANCEMENTS).set(false, server);
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), "time set noon");
 		LOG.info("SkyCraft: mirror world configured");
@@ -98,19 +98,17 @@ public final class SkyCraft {
 		if (player.getTags().contains(STARTER_KIT_TAG)) {
 			return;
 		}
-		equipIfEmpty(player, EquipmentSlot.HEAD, Items.IRON_HELMET);
-		equipIfEmpty(player, EquipmentSlot.CHEST, Items.IRON_CHESTPLATE);
-		equipIfEmpty(player, EquipmentSlot.LEGS, Items.IRON_LEGGINGS);
-		equipIfEmpty(player, EquipmentSlot.FEET, Items.IRON_BOOTS);
-		var inventory = player.getInventory();
-		inventory.add(new ItemStack(Items.IRON_SWORD));
-		inventory.add(new ItemStack(Items.IRON_PICKAXE));
-		inventory.add(new ItemStack(Items.IRON_AXE));
-		inventory.add(new ItemStack(Items.IRON_SHOVEL));
-		inventory.add(new ItemStack(Items.COOKED_BEEF, 16));
-		inventory.add(new ItemStack(Items.TORCH, 16));
+		var book = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(
+			net.minecraft.resources.ResourceLocation.parse("ftbquests:book"));
+		if (book == Items.AIR) {
+			LOG.warn("SkyCraft: quest book unavailable; starter grant deferred for {}", player.getName().getString());
+			return;
+		}
+		if (!player.getInventory().contains(new ItemStack(book))) {
+			player.getInventory().add(new ItemStack(book));
+		}
 		player.addTag(STARTER_KIT_TAG);
-		LOG.info("SkyCraft: gave progression starter kit to {}", player.getName().getString());
+		LOG.info("SkyCraft: gave quest-book-only starter kit to {}", player.getName().getString());
 	}
 
 	private static void equipIfEmpty(ServerPlayer player, EquipmentSlot slot, net.minecraft.world.item.Item item) {

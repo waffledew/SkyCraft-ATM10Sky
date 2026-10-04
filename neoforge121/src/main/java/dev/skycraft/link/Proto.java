@@ -66,6 +66,7 @@ public final class Proto {
 	public static final long EVENT_BYTES = 32;
 	public static final int EV_HIT_ACTOR = 1;
 	public static final int EV_PLAYER_DIED = 2;
+	public static final int EV_RESPAWN = 6;
 	public static final int EV_EXPLOSION = 3;
 	public static final int EV_ARROW_STUCK = 4;
 	public static final int EV_SKILL_USE = 5;

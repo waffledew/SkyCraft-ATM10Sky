@@ -32,6 +32,26 @@ public final class SkyNet {
 	private SkyNet() {
 	}
 
+	public record AreaSync(int area) implements CustomPacketPayload {
+		public static final Type<AreaSync> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "area_sync"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, AreaSync> CODEC = StreamCodec.composite(ByteBufCodecs.INT, AreaSync::area, AreaSync::new);
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
+	public record RespawnReady(int token) implements CustomPacketPayload {
+		public static final Type<RespawnReady> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "respawn_ready"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, RespawnReady> CODEC = StreamCodec.composite(ByteBufCodecs.INT, RespawnReady::token, RespawnReady::new);
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
+	public record Respawn(int area, double x, double y, double z, float yaw, int token) implements CustomPacketPayload {
+		public static final Type<Respawn> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "respawn"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, Respawn> CODEC = StreamCodec.of(
+			(buf, p) -> { buf.writeInt(p.area); buf.writeDouble(p.x); buf.writeDouble(p.y); buf.writeDouble(p.z); buf.writeFloat(p.yaw); buf.writeInt(p.token); },
+			buf -> new Respawn(buf.readInt(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readFloat(), buf.readInt()));
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
 	/** Guest -> server: the guest's Skyrim hit them (as proto::InputEvent kInHurt). */
 	public record Hurt(int kind, float skyrimDamage, int attackerFormId, int flags) implements CustomPacketPayload {
 		public static final Type<Hurt> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "hurt"));
@@ -134,7 +154,13 @@ public final class SkyNet {
 	}
 
 	private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-		var registrar = event.registrar("4");
+		var registrar = event.registrar("6");
+		registrar.playToServer(RespawnReady.TYPE, RespawnReady.CODEC, (payload, context) ->
+			dev.skycraft.world.SkyRespawn.finishRespawn((ServerPlayer) context.player(), payload.token()));
+		registrar.playToServer(AreaSync.TYPE, AreaSync.CODEC, (payload, context) ->
+			dev.skycraft.world.SkyRespawn.updateContext((ServerPlayer) context.player(), payload.area()));
+		registrar.playToClient(Respawn.TYPE, Respawn.CODEC, (payload, context) ->
+			dev.skycraft.client.SkyClient.beginRespawn(payload));
 		registrar.playToServer(TimeSync.TYPE, TimeSync.CODEC, (payload, context) -> syncTime((ServerPlayer) context.player(), payload.gameHour()));
 		registrar.playToServer(TerrainSync.TYPE, TerrainSync.CODEC, (payload, context) -> {
 			ServerPlayer player = (ServerPlayer) context.player();

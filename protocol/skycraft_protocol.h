@@ -241,7 +241,8 @@ namespace skycraft::proto
 	enum McEventType : std::uint32_t
 	{
 		kEvHitActor = 1,    // formId, a = MC damage (after MC's own modifiers), b/c = knockback dir x/z (MC), d = knockback strength
-		kEvPlayerDied = 2,  // the Minecraft player died: kill the Skyrim player
+		kEvPlayerDied = 2,  // Minecraft owns death; keep Skyrim alive without a save reload
+		kEvRespawn = 6,     // formId = Skyrim area; a/b/c = MC feet, d = yaw
 		kEvExplosion = 3,   // a Minecraft explosion (TNT, creeper, ...): a/b/c = centre (MC coords), d = radius (blocks)
 		kEvArrowStuck = 4,  // an arrow stuck in a Skyrim actor: formId, a/b/c = where it hit (MC coords), d = flight yaw,
 		                    // flags = flight pitch (float bits), weapon = arrow texture (0 plain, 1 tipped, 2 spectral)

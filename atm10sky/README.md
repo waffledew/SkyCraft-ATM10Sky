@@ -9,6 +9,11 @@ team or the original SkyCraft author.
 
 ## What every player needs
 
+**Current friend-test prerelease: bridge 0.1.2-atm10sky.21, protocol 6.**
+Do not mix this with the older .16 release. Windows/Skyrim runtime 1.7.104.0
+has been tested locally; older Skyrim runtimes and remote friend-to-host joining
+are not certified. Use a backed-up Skyrim save for the first test.
+
 - A legitimate copy of Skyrim Special Edition or Anniversary Edition.
 - SKSE64 and Address Library installed for that Skyrim runtime.
 - The normal SkyCraft 0.1.2 package installed with Vortex and launched once so
@@ -20,6 +25,12 @@ Use SKSE64 and Address Library builds that match the player's installed Skyrim
 runtime. This package does not downgrade Skyrim or choose those versions. A PC
 with at least 16 GB of system RAM is strongly recommended; 24 GB or more gives
 Skyrim and ATM10Sky more breathing room when running together.
+
+Minecraft must use **64-bit Java 21**, not Java 22/24/25: the bridge uses Java 21
+preview classes. The generated Prism profile enables automatic Java selection;
+verify its Java setting is version 21 if it reports a preview/class-version error.
+The dedicated-server launcher rejects other Java major versions. The optional
+Windows pipe repair is only for `Invalid argument: connect` in `PipeImpl`.
 
 Do not share Minecraft accounts, Skyrim game files, or the complete ATM modpack.
 Each player installs those from their official sources.
@@ -41,7 +52,7 @@ Vortex patch, double-click `INSTALL-ATM10SKY.cmd`, then enter the host's e4mc
 address when the installer asks for a server. No PowerShell knowledge is needed.
 
 1. Install `SkyCraft-ATM10Sky-Vortex-Patch.zip` with Vortex after normal
-   SkyCraft and let the patch win its two file conflicts.
+   SkyCraft and let the patch win its file conflicts.
 2. Extract this compatibility package to any folder.
 3. Double-click `INSTALL-ATM10SKY.cmd` and follow its prompts. It runs the
    included PowerShell installer for the user, finds the 2.0.6 CurseForge
@@ -119,6 +130,12 @@ instead of leaving the player guessing.
 
 Only the host prepares and runs a dedicated server. Friends install the client
 side only; they do not run `Prepare-Server.ps1` or `START-SKYCRAFT-SERVER.cmd`.
+
+Hostile natural spawns use Minecraft's sky/block darkness check with the
+Skyrim-synchronized clock. Outdoor daylight prevents new hostile spawns; Minecraft
+light sources can prevent them at night. Skyrim visual lighting and roofs are not
+Minecraft light-engine blocks, so their shadows are not used for this check.
+Existing mobs are not removed simply because morning arrives.
 
 ### One-time host setup
 
@@ -219,11 +236,32 @@ control the shared server world.
 
 ## New-player progression
 
-Each player receives one modest first-join kit: iron armor, an iron sword,
-pickaxe, axe and shovel, 16 cooked beef, and 16 torches. There are no diamond
-tools, golden apples, or free building stacks. ATM10Sky's FTB quest interface
-and mod guidebooks remain available normally, so progression still starts from
-the pack's quests rather than an overpowered handout.
+### Death and respawning (experimental)
+
+Minecraft owns death and inventory/XP or modded grave handling. Skyrim no longer
+reloads a save on Minecraft death. Click Minecraft's Respawn button in the overlay.
+A valid bed takes priority; a missing or obstructed bed falls back to the shared
+spawn. The bridge records the Skyrim cell/worldspace alongside those positions,
+loads that area, and holds/protects the player until terrain is ready, followed by
+ten seconds of protection after the client explicitly confirms respawn terrain
+readiness. Ordinary area updates do not end respawn protection. The first linked player standing on loaded terrain
+establishes the shared spawn; an operator can stand at a preferred safe location
+and use `/skycraftspawn set` to replace it. These records persist with the world.
+
+This build uses networking protocol 6: all friends and the server need the new
+SkyCraft jar, and each Skyrim needs the matching DLL. Beds set before this update
+must be clicked again to record their Skyrim area. Use matching Skyrim world/cell
+mods and load orders; a missing area ID is rejected rather than guessed.
+Cross-cell travel and the complete death/respawn flow still need in-game testing.
+
+Dropped items now use Minecraft's entity renderer and actual item model when
+its geometry can be exported. This preserves block shapes, item thickness, and
+custom models where supported. Unsupported models retain the old cube/icon
+fallback rather than becoming invisible. Rendering still needs in-game checks.
+
+Each player receives only an FTB quest book on first join. There is no free
+armor, tool, food, torch, or building kit. Existing inventories are not cleared
+by updating the mod; a fresh server world resets player and quest progress.
 
 ## Troubleshooting
 
@@ -271,7 +309,10 @@ the pack's quests rather than an overpowered handout.
   Skyrim ground. Terrain still needs an active Skyrim client nearby to supply it.
 - **`Invalid argument: connect` in `sun.nio.ch.PipeImpl`:** this Windows/JDK
   loopback problem is machine-specific. Use another Java 21 distribution first;
-  the repository's `gradle-uds-workaround` is an advanced fallback.
+  double-click `ENABLE-WINDOWS-PIPE-FIX.cmd` from this release for the optional
+  bundled Java 21 fallback. Leave its folder prompt blank for the client; for
+  the server, enter the prepared server folder. Close the affected games/server
+  first. The helper backs up the configuration and uses this PC's own paths.
 
 ## Tested
 
@@ -281,6 +322,11 @@ spawned in the empty SkyCraft mirror world, retained the ATM quest/mod support,
 and reached `joined the game` with the server's matching mod channels.
 
 ## Updating
+
+Hosts stop the existing server and run `UPDATE-SKYCRAFT-SERVER.cmd` from the
+new package, selecting the existing prepared 2.0.6 server folder. Do not rerun
+server preparation over a populated server. The updater retains world/player/
+quest data and ops/settings and backs up old jars. Update every client as well.
 
 Existing clients close Skyrim and Minecraft, extract the new release, install
 its Vortex patch, and double-click `UPDATE-ATM10SKY.cmd`. The updater preserves

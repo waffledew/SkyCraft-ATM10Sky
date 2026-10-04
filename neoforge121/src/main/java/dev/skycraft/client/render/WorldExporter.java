@@ -136,8 +136,8 @@ public final class WorldExporter {
 			ByteBuffer header = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN).putInt(region.x()).putInt(region.y()).putInt(region.w()).putInt(region.h()).flip();
 			return SkyLink.tryWriteRender(Proto.REN_ATLAS_REGION, header, region.pixels());
 		});
-		exportEntities(minecraft, level, partialTick);
 		AvatarExporter.frame(minecraft, atlas, partialTick);
+		exportEntities(minecraft, level, partialTick);
 	}
 
 	private static void resendEverything(Minecraft minecraft, ClientLevel level) {
@@ -400,6 +400,7 @@ public final class WorldExporter {
 					ENTITIES.add(new SkyLink.WorldEntity(kind, e.getId(), (float) p.x, (float) p.y, (float) p.z, yaw, pitch, 1.0F, null, uv, 0));
 				}
 			} else if (e instanceof ItemEntity item) {
+				if (AvatarExporter.hasCapturedItem(e.getId())) continue;
 				float bob = Mth.sin((item.getAge() + partialTick) / 10.0F + item.bobOffs) * 0.1F + 0.1F;
 				float spin = item.getSpin(partialTick) * Mth.RAD_TO_DEG;
 				addItem(minecraft, level, e, item.getItem(), p.add(0, bob, 0), spin);

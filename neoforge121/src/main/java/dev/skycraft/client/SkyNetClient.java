@@ -22,6 +22,9 @@ public final class SkyNetClient {
 	public static void clientTick(Minecraft minecraft) {
 		if(minecraft.getConnection()==null || minecraft.level==null){nextActors=nextTerrain=nextTime=0;lastTick=Long.MIN_VALUE;return;}
 		long tick=minecraft.level.getGameTime(); if(tick<lastTick)nextActors=nextTerrain=nextTime=0; lastTick=tick;
+		if (SkyClient.spawnContextReady() && minecraft.player != null && tick % 10 == 0 && SkyLink.readSkyState(SKY)) {
+			PacketDistributor.sendToServer(new SkyNet.AreaSync(SKY.worldId));
+		}
 		if(tick>=nextTime && SkyLink.readSkyState(SKY) && SKY.inGame()) {
 			nextTime=(int)tick+20; float hour=SKY.gameHour; var integrated=minecraft.getSingleplayerServer();
 			if(integrated!=null)integrated.execute(()->SkyNet.applyTime(integrated,hour)); else PacketDistributor.sendToServer(new SkyNet.TimeSync(hour));

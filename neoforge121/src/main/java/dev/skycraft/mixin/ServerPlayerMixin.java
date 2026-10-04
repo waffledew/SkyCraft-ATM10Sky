@@ -12,9 +12,14 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {
+	@Inject(method = "isInvulnerableTo", at = @At("HEAD"), cancellable = true)
+	private void skycraft$respawnProtection(DamageSource source, CallbackInfoReturnable<Boolean> cir) {
+		if (dev.skycraft.world.SkyRespawn.protectedNow((ServerPlayer) (Object) this)) cir.setReturnValue(true);
+	}
 	/** Critical hits on a Skyrim actor are flagged so Skyrim can play them up. */
 	@Inject(method = "crit", at = @At("HEAD"))
 	private void skycraft$critSkyrim(Entity entity, CallbackInfo ci) {

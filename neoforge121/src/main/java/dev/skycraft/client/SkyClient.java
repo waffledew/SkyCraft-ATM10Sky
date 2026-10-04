@@ -56,6 +56,27 @@ public final class SkyClient {
 	private static int lastPacedSeq;
 	private static boolean skyrimStalled;
 	private static int exporterErrors;
+	private static boolean awaitingRespawn;
+	private static dev.skycraft.net.SkyNet.Respawn respawnTarget;
+	private static int respawnStartSeq;
+	private static Integer pendingRespawnReady;
+
+	public static boolean spawnContextReady() {
+		return linked && !awaitingRespawn && holdPos == null && sky.inGame() && !sky.loading();
+	}
+
+	public static void beginRespawn(dev.skycraft.net.SkyNet.Respawn target) {
+		if (!linked) return;
+		awaitingRespawn = true;
+		respawnTarget = target;
+		respawnStartSeq = sky.teleportSeq;
+		pendingRespawnReady = target.token();
+		holdPos = new Vec3(target.x(), target.y(), target.z());
+		holdSince = 0;
+		teleportPending = false;
+		SkyLink.pushEvent(Proto.EV_RESPAWN, target.area(), (float) target.x(), (float) target.y(),
+			(float) target.z(), target.yaw(), 0);
+	}
 	private static volatile float effectiveFov;
 
 	private SkyClient() {
@@ -117,6 +138,9 @@ public final class SkyClient {
 			}
 		}
 		if (!linked) {
+			pendingRespawnReady = null;
+			awaitingRespawn = false;
+			respawnTarget = null;
 			skyrimWasPlayable = false;
 			return;
 		}
@@ -141,6 +165,32 @@ public final class SkyClient {
 		if (player == null) {
 			lastPlayer = null;
 			return;
+		}
+		if (player.isDeadOrDying()) {
+			awaitingRespawn = true;
+			respawnTarget = null;
+			InputBridge.releaseAll();
+			return;
+		}
+		if (awaitingRespawn) {
+			if (respawnTarget == null && player == lastPlayer) {
+				// A revival mod can revive the existing player without a respawn packet.
+				awaitingRespawn = false;
+			} else {
+			var target = respawnTarget;
+			if (target == null) return;
+			lastPlayer = player;
+			boolean arrived = sky.inGame() && !sky.loading() && sky.worldId == target.area()
+				&& sky.teleportSeq != respawnStartSeq
+				&& new Vec3(sky.x, sky.y, sky.z).distanceTo(new Vec3(target.x(), target.y(), target.z())) < 3;
+			if (!arrived) { InputBridge.releaseAll(); return; }
+			awaitingRespawn = false;
+			respawnTarget = null;
+			lastTeleportSeq = sky.teleportSeq;
+			teleportAck = sky.teleportSeq;
+			teleportPending = false;
+			WorldExporter.requestLoadedResend();
+			}
 		}
 
 		// A new player object means we just joined or respawned: put it where Skyrim's player is.
@@ -283,6 +333,13 @@ public final class SkyClient {
 		if (!linked || player == null) {
 			return;
 		}
+		if (player.isDeadOrDying()) return;
+		if (awaitingRespawn) {
+			player.setDeltaMovement(Vec3.ZERO);
+			if (respawnTarget != null) player.setPos(respawnTarget.x(), respawnTarget.y(), respawnTarget.z());
+			player.resetFallDistance();
+			return;
+		}
 		if (!sky.inGame() || sky.loading()) {
 			// Skyrim is on its main menu or a loading screen: park the player where they are.
 			if (holdPos == null) {
@@ -298,8 +355,7 @@ public final class SkyClient {
 			holdSince = System.currentTimeMillis();
 		}
 		int bx = (int) Math.floor(holdPos.x), by = (int) Math.floor(holdPos.y), bz = (int) Math.floor(holdPos.z);
-		boolean known = SkyCollision.isKnown(bx, by - 1, bz) && SkyCollision.isKnown(bx, by, bz)
-			&& SkyCollision.isKnown(bx, by - SkyCollision.REGION_SIZE, bz);
+		boolean known = SkyCollision.isKnown(bx, by - 1, bz) && SkyCollision.isKnown(bx, by, bz);
 		// Release once there is actual ground below (or after a timeout, e.g. when mid-air on purpose).
 		boolean ready = known && (SkyCollision.hasSolidBelow(bx, by, bz, 12) || System.currentTimeMillis() - holdSince > 6000);
 		if (ready && sky.inGame() && !sky.loading()) {
@@ -312,6 +368,11 @@ public final class SkyClient {
 				SkyCraft.LOG.info("SkyCraft: lifted player {} blocks out of the ground", String.format("%.3f", safe.y - holdPos.y));
 			}
 			holdPos = null;
+			if (pendingRespawnReady != null) {
+				net.neoforged.neoforge.network.PacketDistributor.sendToServer(new dev.skycraft.net.SkyNet.RespawnReady(pendingRespawnReady));
+				pendingRespawnReady = null;
+				SkyCraft.LOG.info("SkyCraft: respawn terrain ready; protection handoff confirmed");
+			}
 			return;
 		}
 		player.setDeltaMovement(Vec3.ZERO);

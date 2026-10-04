@@ -10,6 +10,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.MobSpawnType;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -41,11 +42,16 @@ public final class SkyMobSpawner {
 	}
 
 	private static void spawnNear(ServerLevel level, ServerPlayer player, List<EntityType<?>> pool) {
+		boolean hostile = pool == MONSTERS;
 		for (int attempt=0; attempt<8; attempt++) {
 			double angle=level.random.nextDouble()*Math.PI*2.0, distance=16.0+level.random.nextDouble()*8.0;
 			int x=(int)Math.floor(player.getX()+Math.cos(angle)*distance), z=(int)Math.floor(player.getZ()+Math.sin(angle)*distance);
 			double y=SkyCollision.surfaceY(x,z,(int)Math.floor(player.getY())-20,(int)Math.floor(player.getY())+12);
 			if (Double.isNaN(y)) continue;
+			// Skyrim supplies the supporting terrain, so vanilla's block-based
+			// ground check cannot be used. Its sky/block darkness check can.
+			BlockPos spawnPos = BlockPos.containing(x + 0.5, y + 0.02, z + 0.5);
+			if (hostile && !Monster.isDarkEnoughToSpawn(level, spawnPos, level.random)) continue;
 			var entity=pool.get(level.random.nextInt(pool.size())).create(level);
 			if (!(entity instanceof Mob mob)) continue;
 			mob.moveTo(x+0.5,y+0.02,z+0.5,level.random.nextFloat()*360.0F,0.0F);
