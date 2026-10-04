@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
@@ -57,7 +58,9 @@ public final class SkyCombat {
 	/** Skyrim damage is divided by this for Minecraft (a 15-damage bandit swing = 3 = 1.5 hearts). */
 	public static final float SKYRIM_TO_MC_DAMAGE = 5.0F;
 
-	private static final Map<Integer, SkyrimActorEntity> PROXIES = new HashMap<>();
+	private record ActorKey(UUID owner, int formId) {}
+	private static final Map<ActorKey, SkyrimActorEntity> PROXIES = new HashMap<>();
+	private static final Map<UUID, Long> LAST_SYNC = new HashMap<>();
 	private static final List<SkyLink.Actor> ACTORS = new ArrayList<>();
 
 	private SkyCombat() {
@@ -74,56 +77,81 @@ public final class SkyCombat {
 	}
 
 	public static @Nullable SkyrimActorEntity proxy(int formId) {
-		return PROXIES.get(formId);
+		return PROXIES.values().stream().filter(p -> p.formId() == formId).findFirst().orElse(null);
 	}
 
 	private static void serverTick(ServerTickEvent.Post event) {
 		MinecraftServer server = event.getServer();
 		List<ServerPlayer> players = server.getPlayerList().getPlayers();
-		if (!SkyLink.active() || players.isEmpty()) {
+		if (players.isEmpty()) {
 			removeAll();
 			return;
 		}
-		ServerLevel level = players.getFirst().serverLevel();
 		for (ServerPlayer player : players) {
 			pickUpNearby(player);
 		}
-		if (SkyLink.readActors(ACTORS)) {
-			sync(level);
+		// Integrated singleplayer still has a direct server-side link. Dedicated-server players
+		// publish their own actor tables through SkyNet.ActorSync instead.
+		if (SkyLink.active()) {
+			for (ServerPlayer player : players) {
+				if (dev.skycraft.net.SkyNet.isHost(player) && SkyLink.readActors(ACTORS)) {
+					syncPlayer(player, ACTORS);
+					break;
+				}
+			}
+		}
+		long tick = server.getTickCount();
+		for (Iterator<Map.Entry<ActorKey, SkyrimActorEntity>> it = PROXIES.entrySet().iterator(); it.hasNext(); ) {
+			var e = it.next();
+			if (server.getPlayerList().getPlayer(e.getKey().owner()) == null || tick - LAST_SYNC.getOrDefault(e.getKey().owner(), 0L) > 60L) {
+				e.getValue().discard(); it.remove();
+			}
 		}
 		// Hits land during the tick (melee, sweeps, arrows, fire); send one combined hit per actor.
-		for (SkyrimActorEntity proxy : PROXIES.values()) {
+		for (Map.Entry<ActorKey, SkyrimActorEntity> entry : PROXIES.entrySet()) {
+			SkyrimActorEntity proxy = entry.getValue();
 			float[] hit = proxy.takeHit();
 			if (hit != null && (hit[0] > 0.0F || hit[3] > 0.0F)) {
-				SkyLink.pushEvent(
-					Proto.EV_HIT_ACTOR, proxy.formId(), hit[0], hit[1], hit[2], hit[3], Float.floatToRawIntBits(hit[4]), Float.floatToRawIntBits(hit[5])
-				);
+				ServerPlayer owner = server.getPlayerList().getPlayer(entry.getKey().owner());
+				int flags = Float.floatToRawIntBits(hit[4]), weapon = Float.floatToRawIntBits(hit[5]);
+				if (owner != null && dev.skycraft.net.SkyNet.isHost(owner) && SkyLink.active()) {
+					SkyLink.pushEvent(Proto.EV_HIT_ACTOR, proxy.formId(), hit[0], hit[1], hit[2], hit[3], flags, weapon);
+				} else if (owner != null) {
+					net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(owner,
+						new dev.skycraft.net.SkyNet.HitActor(proxy.formId(), hit[0], hit[1], hit[2], hit[3], flags, weapon));
+				}
 				SkyCraft.LOG.info("SkyCraft: hit {} for {} (knockback {})", proxy.getName().getString(), hit[0], hit[3]);
 			}
 		}
 	}
 
-	private static void sync(ServerLevel level) {
+	public static void syncPlayer(ServerPlayer player, List<SkyLink.Actor> actors) {
+		ServerLevel level = player.serverLevel();
+		UUID owner = player.getUUID();
+		LAST_SYNC.put(owner, (long) player.getServer().getTickCount());
 		Map<Integer, SkyLink.Actor> live = new HashMap<>();
-		for (SkyLink.Actor a : ACTORS) {
+		for (SkyLink.Actor a : actors) {
 			if (!a.dead()) {
 				live.put(a.formId(), a);
 			}
 		}
-		for (Iterator<Map.Entry<Integer, SkyrimActorEntity>> it = PROXIES.entrySet().iterator(); it.hasNext(); ) {
-			Map.Entry<Integer, SkyrimActorEntity> e = it.next();
+		for (Iterator<Map.Entry<ActorKey, SkyrimActorEntity>> it = PROXIES.entrySet().iterator(); it.hasNext(); ) {
+			Map.Entry<ActorKey, SkyrimActorEntity> e = it.next();
+			if (!e.getKey().owner().equals(owner)) continue;
 			SkyrimActorEntity proxy = e.getValue();
-			if (!live.containsKey(e.getKey()) || proxy.isRemoved() || proxy.level() != level) {
+			if (!live.containsKey(e.getKey().formId()) || proxy.isRemoved() || proxy.level() != level) {
 				proxy.discard();
 				it.remove();
 			}
 		}
 		int before = PROXIES.size();
 		for (SkyLink.Actor a : live.values()) {
-			SkyrimActorEntity proxy = PROXIES.get(a.formId());
+			ActorKey key = new ActorKey(owner, a.formId());
+			SkyrimActorEntity proxy = PROXIES.get(key);
 			if (proxy == null) {
 				proxy = new SkyrimActorEntity(SKYRIM_ACTOR.get(), level);
 				proxy.setFormId(a.formId());
+				proxy.setOwnerId(owner);
 				proxy.setSize(a.width(), a.height());
 				proxy.setPos(a.x(), a.y(), a.z());
 				proxy.setYRot(a.yaw());
@@ -134,7 +162,7 @@ public final class SkyCombat {
 				if (!level.addFreshEntity(proxy)) {
 					continue;
 				}
-				PROXIES.put(a.formId(), proxy);
+				PROXIES.put(key, proxy);
 				continue;
 			}
 			proxy.setSize(a.width(), a.height());
@@ -189,6 +217,7 @@ public final class SkyCombat {
 		}
 		PROXIES.values().forEach(Entity::discard);
 		PROXIES.clear();
+		LAST_SYNC.clear();
 	}
 
 	/**
@@ -200,7 +229,7 @@ public final class SkyCombat {
 			return;
 		}
 		ServerLevel level = player.serverLevel();
-		SkyrimActorEntity attacker = PROXIES.get(attackerFormId);
+		SkyrimActorEntity attacker = PROXIES.get(new ActorKey(player.getUUID(), attackerFormId));
 		if (attacker != null && attacker.distanceToSqr(player) > 24.0 * 24.0) {
 			attacker = null; // a guest's own NPC with the same form id as one of the host's
 		}

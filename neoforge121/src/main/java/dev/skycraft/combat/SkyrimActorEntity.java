@@ -1,6 +1,8 @@
 package dev.skycraft.combat;
 
 import dev.skycraft.link.Proto;
+import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -30,6 +32,7 @@ public class SkyrimActorEntity extends LivingEntity {
 	private static final EntityDataAccessor<Integer> FORM_ID = SynchedEntityData.defineId(SkyrimActorEntity.class, EntityDataSerializers.INT);
 	private static final EntityDataAccessor<Float> WIDTH = SynchedEntityData.defineId(SkyrimActorEntity.class, EntityDataSerializers.FLOAT);
 	private static final EntityDataAccessor<Float> HEIGHT = SynchedEntityData.defineId(SkyrimActorEntity.class, EntityDataSerializers.FLOAT);
+	private static final EntityDataAccessor<Optional<UUID>> OWNER = SynchedEntityData.defineId(SkyrimActorEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
 	// This tick's hit, flushed to Skyrim by SkyCombat after all attacks for the tick have landed
 	// (Player.attack adds its sprint/enchantment knockback after hurtServer returns).
@@ -56,12 +59,27 @@ public class SkyrimActorEntity extends LivingEntity {
 		this.entityData.set(FORM_ID, formId);
 	}
 
+	public @Nullable UUID ownerId() {
+		return this.entityData.get(OWNER).orElse(null);
+	}
+
+	public void setOwnerId(UUID owner) {
+		this.entityData.set(OWNER, Optional.of(owner));
+	}
+
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		super.defineSynchedData(builder);
 		builder.define(FORM_ID, 0);
 		builder.define(WIDTH, 0.6F);
 		builder.define(HEIGHT, 1.8F);
+		builder.define(OWNER, Optional.empty());
+	}
+
+	@Override
+	public boolean broadcastToPlayer(net.minecraft.server.level.ServerPlayer player) {
+		UUID owner = ownerId();
+		return owner != null && owner.equals(player.getUUID());
 	}
 
 	public void setSize(float width, float height) {
@@ -89,7 +107,10 @@ public class SkyrimActorEntity extends LivingEntity {
 	protected void actuallyHurt(DamageSource source, float dmg) {
 		// Minecraft has applied everything (crit, sharpness, strength, cooldown, invulnerability
 		// frames). Hand the result to Skyrim instead of lowering our own health.
-		if (this.isInvulnerableTo(source) || dmg <= 0.0F) {
+		UUID owner = ownerId();
+		if (this.isInvulnerableTo(source) || dmg <= 0.0F || owner == null
+			|| !(source.getEntity() instanceof net.minecraft.server.level.ServerPlayer attacker)
+			|| !owner.equals(attacker.getUUID())) {
 			return;
 		}
 		this.pendingDamage += dmg;

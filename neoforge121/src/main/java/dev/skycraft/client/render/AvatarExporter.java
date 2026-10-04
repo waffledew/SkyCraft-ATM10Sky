@@ -34,6 +34,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.client.renderer.texture.HttpTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.core.BlockPos;
@@ -48,6 +49,7 @@ import net.minecraft.world.entity.projectile.ItemSupplier;
 import net.minecraft.world.entity.projectile.AbstractArrow;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import org.lwjgl.opengl.GL11;
 
 /**
  * Adapts Minecraft 1.21.1's immediate entity, block-entity and particle renderers to SkyCraft's
@@ -459,7 +461,14 @@ final class AvatarExporter implements MultiBufferSource {
 		if (old != null) return old;
 		if (UNUSABLE_TEXTURES.contains(texture)) return -1;
 		NativeImage image = readTexture(texture);
-		if (image == null) { UNUSABLE_TEXTURES.add(texture); SkyCraft.LOG.info("SkyCraft compatibility audit: unavailable texture {}", texture); return -1; }
+		if (image == null) {
+			// Downloaded player skins are registered before their HTTP upload is necessarily complete.
+			// Retry those instead of remembering a transient miss forever (which produced floating armor).
+			AbstractTexture registered = ((TextureManagerAccessor) Minecraft.getInstance().getTextureManager()).skycraft$byPath().get(texture);
+			if (!(registered instanceof HttpTexture)) UNUSABLE_TEXTURES.add(texture);
+			SkyCraft.LOG.info("SkyCraft compatibility audit: unavailable texture {}", texture);
+			return -1;
+		}
 		int id = nextTextureId++;
 		try (image) {
 			int w = image.getWidth(), h = image.getHeight();
@@ -481,6 +490,25 @@ final class AvatarExporter implements MultiBufferSource {
 		AbstractTexture registered = ((TextureManagerAccessor) mc.getTextureManager()).skycraft$byPath().get(texture);
 		if (registered instanceof DynamicTexture dynamic && dynamic.getPixels() != null) { NativeImage copy=new NativeImage(dynamic.getPixels().getWidth(),dynamic.getPixels().getHeight(),false);copy.copyFrom(dynamic.getPixels());return copy; }
 		if (registered instanceof TextureAtlas atlas) return SkyAtlas.image(atlas);
+		// Player skins (HttpTexture) and some mod textures only retain their uploaded GL image. Read
+		// that image back while we are on the render thread so their body/model is exported too.
+		if (registered != null) {
+			int previous = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+			try {
+				GL11.glBindTexture(GL11.GL_TEXTURE_2D, registered.getId());
+				int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+				int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+				if (width > 0 && height > 0 && width <= 4096 && height <= 4096) {
+					NativeImage copy = new NativeImage(width, height, false);
+					copy.downloadTexture(0, false);
+					return copy;
+				}
+			} catch (RuntimeException ex) {
+				SkyCraft.LOG.debug("SkyCraft: GPU texture readback failed for {}", texture, ex);
+			} finally {
+				GL11.glBindTexture(GL11.GL_TEXTURE_2D, previous);
+			}
+		}
 		return null;
 	}
 

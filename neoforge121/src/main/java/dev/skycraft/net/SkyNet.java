@@ -3,7 +3,12 @@ package dev.skycraft.net;
 import dev.skycraft.SkyCraft;
 import dev.skycraft.combat.SkyCombat;
 import dev.skycraft.world.SkyDig;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -13,6 +18,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Multiplayer: every player has their own Skyrim, talking to their own Minecraft client. The host's
@@ -20,6 +26,11 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
  * host's server through these packets instead.
  */
 public final class SkyNet {
+	private static final int ACTOR_BYTES = 64;
+	private static final int MAX_ACTORS = 128;
+	private static final List<dev.skycraft.link.SkyLink.Actor> CLIENT_ACTORS = new ArrayList<>();
+	private static int nextActorSyncTick;
+
 	private SkyNet() {
 	}
 
@@ -49,6 +60,26 @@ public final class SkyNet {
 		public Type<? extends CustomPacketPayload> type() {
 			return TYPE;
 		}
+	}
+
+	/** Client -> dedicated server: this player's nearby Skyrim actors. */
+	public record ActorSync(byte[] data) implements CustomPacketPayload {
+		public static final Type<ActorSync> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "actor_sync"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, ActorSync> CODEC = StreamCodec.of(
+			(buf, payload) -> buf.writeByteArray(payload.data),
+			buf -> new ActorSync(buf.readByteArray(ACTOR_BYTES * MAX_ACTORS))
+		);
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
+	}
+
+	/** Dedicated server -> owning client: Minecraft hit one of that client's Skyrim actors. */
+	public record HitActor(int formId, float damage, float pushX, float pushZ, float pushStrength, int flags, int weapon) implements CustomPacketPayload {
+		public static final Type<HitActor> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SkyCraft.MOD_ID, "hit_actor"));
+		public static final StreamCodec<RegistryFriendlyByteBuf, HitActor> CODEC = StreamCodec.of(
+			(buf, p) -> { buf.writeInt(p.formId); buf.writeFloat(p.damage); buf.writeFloat(p.pushX); buf.writeFloat(p.pushZ); buf.writeFloat(p.pushStrength); buf.writeVarInt(p.flags); buf.writeVarInt(p.weapon); },
+			buf -> new HitActor(buf.readInt(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readVarInt(), buf.readVarInt())
+		);
+		@Override public Type<? extends CustomPacketPayload> type() { return TYPE; }
 	}
 
 	/** Client -> server: the player hit Skyrim's geometry in this cell (SkyDig.open). */
@@ -88,7 +119,11 @@ public final class SkyNet {
 	}
 
 	private static void registerPayloads(RegisterPayloadHandlersEvent event) {
-		var registrar = event.registrar("1");
+		var registrar = event.registrar("2");
+		registrar.playToServer(ActorSync.TYPE, ActorSync.CODEC, (payload, context) -> {
+			ServerPlayer player = (ServerPlayer) context.player();
+			SkyCombat.syncPlayer(player, decodeActors(payload.data()));
+		});
 		registrar.playToServer(DigOpen.TYPE, DigOpen.CODEC, (payload, context) -> {
 			ServerPlayer player = (ServerPlayer) context.player();
 			SkyDig.open(player, payload.world(), payload.pos(), payload.material());
@@ -109,6 +144,50 @@ public final class SkyNet {
 				dev.skycraft.link.SkyLink.pushEvent(dev.skycraft.link.Proto.EV_PLAYER_DIED, payload.attackerFormId(), 0, 0, 0, 0, 0);
 			}
 		});
+		registrar.playToClient(HitActor.TYPE, HitActor.CODEC, (payload, context) -> {
+			if (dev.skycraft.link.SkyLink.active()) {
+				dev.skycraft.link.SkyLink.pushEvent(dev.skycraft.link.Proto.EV_HIT_ACTOR, payload.formId(), payload.damage(), payload.pushX(), payload.pushZ(),
+					payload.pushStrength(), payload.flags(), payload.weapon());
+			}
+		});
+	}
+
+	/** Sends the local Skyrim actor table to a remote/dedicated server five times per second. */
+	public static void clientTick(Minecraft minecraft) {
+		if (minecraft.getConnection() == null || minecraft.getSingleplayerServer() != null || minecraft.level == null
+			|| minecraft.level.getGameTime() < nextActorSyncTick) return;
+		nextActorSyncTick = (int) minecraft.level.getGameTime() + 4;
+		if (!dev.skycraft.link.SkyLink.readActors(CLIENT_ACTORS)) return;
+		PacketDistributor.sendToServer(new ActorSync(encodeActors(CLIENT_ACTORS)));
+	}
+
+	private static byte[] encodeActors(List<dev.skycraft.link.SkyLink.Actor> actors) {
+		int count = Math.min(actors.size(), MAX_ACTORS);
+		ByteBuffer out = ByteBuffer.allocate(count * ACTOR_BYTES).order(ByteOrder.LITTLE_ENDIAN);
+		for (int i = 0; i < count; i++) {
+			var a = actors.get(i);
+			out.putInt(a.formId()).putInt(a.flags()).putFloat(a.x()).putFloat(a.y()).putFloat(a.z()).putFloat(a.yaw())
+				.putFloat(a.width()).putFloat(a.height()).putFloat(a.healthFrac()).putInt(a.level());
+			byte[] name = a.name().getBytes(StandardCharsets.UTF_8);
+			out.put(name, 0, Math.min(name.length, 23));
+			out.position((i + 1) * ACTOR_BYTES);
+		}
+		return out.array();
+	}
+
+	private static List<dev.skycraft.link.SkyLink.Actor> decodeActors(byte[] data) {
+		int count = Math.min(data.length / ACTOR_BYTES, MAX_ACTORS);
+		ByteBuffer in = ByteBuffer.wrap(data, 0, count * ACTOR_BYTES).order(ByteOrder.LITTLE_ENDIAN);
+		List<dev.skycraft.link.SkyLink.Actor> actors = new ArrayList<>(count);
+		for (int i = 0; i < count; i++) {
+			int start = i * ACTOR_BYTES;
+			int form = in.getInt(), flags = in.getInt();
+			float x=in.getFloat(), y=in.getFloat(), z=in.getFloat(), yaw=in.getFloat(), width=in.getFloat(), height=in.getFloat(), health=in.getFloat();
+			int level=in.getInt(); byte[] nameBytes=new byte[24]; in.get(nameBytes); int n=0; while(n<nameBytes.length && nameBytes[n]!=0)n++;
+			actors.add(new dev.skycraft.link.SkyLink.Actor(form, flags, x, y, z, yaw, width, height, health, level, new String(nameBytes, 0, n, StandardCharsets.UTF_8)));
+			in.position(start + ACTOR_BYTES);
+		}
+		return actors;
 	}
 
 	/** True if this player plays on this machine (their Skyrim is on the shared-memory link). */

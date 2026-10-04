@@ -208,6 +208,7 @@ public final class SkyClient {
 	/** Called at the end of every client tick. */
 	public static void clientTick(Minecraft minecraft) {
 		MirrorWorld.tick(minecraft);
+		dev.skycraft.net.SkyNet.clientTick(minecraft);
 		DiscordPresence.tick(minecraft);
 		SkyDigClient.tick(minecraft);
 		freezeWhileUnlinked(minecraft);
