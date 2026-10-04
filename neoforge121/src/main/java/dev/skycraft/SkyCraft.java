@@ -43,6 +43,7 @@ public final class SkyCraft {
 
 	private static void playerLeft(PlayerEvent.PlayerLoggedOutEvent event) {
 		dev.skycraft.world.SkyCollision.removeRemote(event.getEntity().getUUID());
+		dev.skycraft.net.SkyNet.playerLeft(event.getEntity().getUUID());
 	}
 
 	private static void playerJoined(PlayerEvent.PlayerLoggedInEvent event) {
@@ -68,6 +69,7 @@ public final class SkyCraft {
 		rules.getRule(GameRules.RULE_ANNOUNCE_ADVANCEMENTS).set(false, server);
 		server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), "time set noon");
 		LOG.info("SkyCraft: mirror world configured");
+		dev.skycraft.server.ServerAddressWriter.start(server);
 	}
 
 	/**
