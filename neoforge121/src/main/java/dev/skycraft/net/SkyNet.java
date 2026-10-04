@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -19,7 +18,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Multiplayer: every player has their own Skyrim, talking to their own Minecraft client. The host's
@@ -29,12 +27,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class SkyNet {
 	private static final int ACTOR_BYTES = 64;
 	private static final int MAX_ACTORS = 128;
-	private static final List<dev.skycraft.link.SkyLink.Actor> CLIENT_ACTORS = new ArrayList<>();
-	private static int nextActorSyncTick;
-	private static int nextTerrainSyncTick;
-	private static int nextTimeSyncTick;
-	private static long lastClientWorldTick = Long.MIN_VALUE;
-	private static final dev.skycraft.link.SkyLink.SkyState CLIENT_SKY = new dev.skycraft.link.SkyLink.SkyState();
 	private static UUID timeLeader;
 
 	private SkyNet() {
@@ -180,32 +172,6 @@ public final class SkyNet {
 		});
 	}
 
-	/** Sends the local Skyrim actor table to a remote/dedicated server five times per second. */
-	public static void clientTick(Minecraft minecraft) {
-		if (minecraft.getConnection() == null || minecraft.level == null) {
-			nextActorSyncTick = nextTerrainSyncTick = nextTimeSyncTick = 0; lastClientWorldTick = Long.MIN_VALUE; return;
-		}
-		long tick = minecraft.level.getGameTime();
-		if (tick < lastClientWorldTick) nextActorSyncTick = nextTerrainSyncTick = nextTimeSyncTick = 0;
-		lastClientWorldTick = tick;
-		if (tick >= nextTimeSyncTick && dev.skycraft.link.SkyLink.readSkyState(CLIENT_SKY) && CLIENT_SKY.inGame()) {
-			nextTimeSyncTick = (int) tick + 20;
-			var integrated = minecraft.getSingleplayerServer();
-			if (integrated != null) integrated.execute(() -> applyTime(integrated, CLIENT_SKY.gameHour));
-			else PacketDistributor.sendToServer(new TimeSync(CLIENT_SKY.gameHour));
-		}
-		if (minecraft.getSingleplayerServer() != null) return;
-		if (tick >= nextActorSyncTick) {
-			nextActorSyncTick = (int) tick + 4;
-			if (dev.skycraft.link.SkyLink.readActors(CLIENT_ACTORS)) PacketDistributor.sendToServer(new ActorSync(encodeActors(CLIENT_ACTORS)));
-		}
-		if (tick >= nextTerrainSyncTick && minecraft.player != null && dev.skycraft.world.SkyCollision.active()) {
-			nextTerrainSyncTick = (int) tick + 40;
-			BlockPos center = minecraft.player.blockPosition();
-			PacketDistributor.sendToServer(new TerrainSync(center, dev.skycraft.world.SkyCollision.snapshotAround(center, 24, 24, 4096)));
-		}
-	}
-
 	private static void syncTime(ServerPlayer player, float hour) {
 		var server=player.getServer(); if(server==null)return;
 		ServerPlayer old=timeLeader==null?null:server.getPlayerList().getPlayer(timeLeader);
@@ -216,7 +182,7 @@ public final class SkyNet {
 		if(player.getUUID().equals(timeLeader)) applyTime(server,hour);
 	}
 
-	private static void applyTime(net.minecraft.server.MinecraftServer server, float hour) {
+	public static void applyTime(net.minecraft.server.MinecraftServer server, float hour) {
 		if(!Float.isFinite(hour))return; hour=((hour%24.0F)+24.0F)%24.0F;
 		var level=server.overworld(); long current=level.getDayTime(), day=Math.floorDiv(current,24000L)*24000L;
 		long within=Math.round((((hour-6.0F)+24.0F)%24.0F)*1000.0F);
@@ -227,20 +193,6 @@ public final class SkyNet {
 	}
 
 	public static void playerLeft(UUID player) { if(player.equals(timeLeader)) timeLeader=null; }
-
-	private static byte[] encodeActors(List<dev.skycraft.link.SkyLink.Actor> actors) {
-		int count = Math.min(actors.size(), MAX_ACTORS);
-		ByteBuffer out = ByteBuffer.allocate(count * ACTOR_BYTES).order(ByteOrder.LITTLE_ENDIAN);
-		for (int i = 0; i < count; i++) {
-			var a = actors.get(i);
-			out.putInt(a.formId()).putInt(a.flags()).putFloat(a.x()).putFloat(a.y()).putFloat(a.z()).putFloat(a.yaw())
-				.putFloat(a.width()).putFloat(a.height()).putFloat(a.healthFrac()).putInt(a.level());
-			byte[] name = a.name().getBytes(StandardCharsets.UTF_8);
-			out.put(name, 0, Math.min(name.length, 23));
-			out.position((i + 1) * ACTOR_BYTES);
-		}
-		return out.array();
-	}
 
 	private static List<dev.skycraft.link.SkyLink.Actor> decodeActors(byte[] data) {
 		int count = Math.min(data.length / ACTOR_BYTES, MAX_ACTORS);
