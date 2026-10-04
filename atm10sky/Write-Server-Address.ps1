@@ -5,18 +5,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$logFile = Join-Path $ServerDirectory 'logs\debug.log'
+$logFiles = @(
+    (Join-Path $ServerDirectory 'logs\latest.log'),
+    (Join-Path $ServerDirectory 'logs\debug.log')
+)
 $addressFile = Join-Path $ServerDirectory 'SERVER-ADDRESS.txt'
 $deadline = [DateTime]::UtcNow.AddMinutes(10)
 $startedAt = Get-Date
-$position = 0L
-$fileCreated = 0L
-
-if ($IgnoreExisting -and (Test-Path -LiteralPath $logFile)) {
-    $existing = Get-Item -LiteralPath $logFile
-    $position = $existing.Length
-    $fileCreated = $existing.CreationTimeUtc.Ticks
-}
+$tailBytes = 4MB
 
 Set-Content -LiteralPath $addressFile -Encoding ascii -Value @(
     'SKYCRAFT ATM10SKY SERVER ADDRESS',
@@ -26,57 +22,47 @@ Set-Content -LiteralPath $addressFile -Encoding ascii -Value @(
 )
 
 while ([DateTime]::UtcNow -lt $deadline) {
-    if (-not (Test-Path -LiteralPath $logFile)) {
-        Start-Sleep -Milliseconds 500
-        continue
-    }
+    foreach ($logFile in $logFiles) {
+        if (-not (Test-Path -LiteralPath $logFile)) { continue }
 
-    try {
-        $item = Get-Item -LiteralPath $logFile
-        if (($fileCreated -ne 0 -and $item.CreationTimeUtc.Ticks -ne $fileCreated) -or $item.Length -lt $position) {
-            $position = 0L
-        }
-        $fileCreated = $item.CreationTimeUtc.Ticks
-
-        $share = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
-        $stream = [System.IO.File]::Open($logFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share)
         try {
-            $stream.Position = [Math]::Min($position, $stream.Length)
-            $reader = [System.IO.StreamReader]::new($stream)
+            # NeoForge truncates an existing log and can regrow it beyond its old length before this
+            # watcher gets a timeslice. Following the previous byte offset would then skip the new
+            # address. Re-read a bounded tail and use the log timestamp to reject the prior session.
+            $share = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
+            $stream = [System.IO.File]::Open($logFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share)
             try {
-                $newText = $reader.ReadToEnd()
-                $nextPosition = $stream.Position
-            } finally { $reader.Dispose() }
-            $position = $nextPosition
-        } finally {
-            $stream.Dispose()
-        }
-
-        $matches = [regex]::Matches($newText, '\[(\d{2}[A-Za-z]{3}\d{4} \d{2}:\d{2}:\d{2}\.\d{3})\].*Domain assigned:\s*([a-z0-9.-]+\.e4mc\.link)', 'IgnoreCase')
-        if ($matches.Count -gt 0) {
-            $match = $matches[$matches.Count - 1]
-            $loggedAt = [DateTime]::ParseExact($match.Groups[1].Value, 'ddMMMyyyy HH:mm:ss.fff', [Globalization.CultureInfo]::InvariantCulture)
-            if ($IgnoreExisting -and $loggedAt -lt $startedAt.AddSeconds(-2)) {
-                Start-Sleep -Milliseconds 500
-                continue
+                $stream.Position = [Math]::Max(0L, $stream.Length - $tailBytes)
+                $reader = [System.IO.StreamReader]::new($stream)
+                try { $newText = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            } finally {
+                $stream.Dispose()
             }
-            $address = $match.Groups[2].Value.ToLowerInvariant()
-            Set-Content -LiteralPath $addressFile -Encoding ascii -Value @(
-                'SKYCRAFT ATM10SKY SERVER ADDRESS',
-                '================================',
-                '',
-                $address,
-                '',
-                "Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
-                '',
-                'Send the address above to friends.',
-                'Friends run CHANGE-SERVER-ADDRESS.cmd and paste it.',
-                'The host continues to use localhost:25565.'
-            )
-            exit 0
+
+            $matches = [regex]::Matches($newText, '\[(\d{2}[A-Za-z]{3}\d{4} \d{2}:\d{2}:\d{2}\.\d{3})\].*Domain assigned:\s*([a-z0-9.-]+\.e4mc\.link)', 'IgnoreCase')
+            for ($i = $matches.Count - 1; $i -ge 0; $i--) {
+                $match = $matches[$i]
+                $loggedAt = [DateTime]::ParseExact($match.Groups[1].Value, 'ddMMMyyyy HH:mm:ss.fff', [Globalization.CultureInfo]::InvariantCulture)
+                if ($IgnoreExisting -and $loggedAt -lt $startedAt.AddSeconds(-2)) { continue }
+
+                $address = $match.Groups[2].Value.ToLowerInvariant()
+                Set-Content -LiteralPath $addressFile -Encoding ascii -Value @(
+                    'SKYCRAFT ATM10SKY SERVER ADDRESS',
+                    '================================',
+                    '',
+                    $address,
+                    '',
+                    "Updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+                    '',
+                    'Send the address above to friends.',
+                    'Friends run CHANGE-SERVER-ADDRESS.cmd and paste it.',
+                    'The host continues to use localhost:25565.'
+                )
+                exit 0
+            }
+        } catch [System.IO.IOException] {
+            # The logger may be rotating this file; retry after it finishes.
         }
-    } catch [System.IO.IOException] {
-        # The logger may be rotating this file; retry after it finishes.
     }
 
     Start-Sleep -Milliseconds 500
